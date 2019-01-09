@@ -30,17 +30,23 @@ end
 [~, idx] = sort({filearray.date});
 files = files(idx);
 for i=1:length(files)
-    read_Intan_RHD2000_file_MML(fullfile(filearray(i).folder,filearray(i).name),0)
+    read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0)
     
+    % only runs once
     if ~exist('a1', 'var')
         [b1, a1] = butter(3, 300/frequency_parameters.amplifier_sample_rate*2, 'high');
     end
-    
-    datr = filter(b1, a1, amplifier_data');
+
+    % filter
+    dataRAW = amplifier_data';
+    dataRAW = single(dataRAW);
+
+    datr = filter(b1, a1, dataRAW);
     datr = flipud(datr);
     datr = filter(b1, a1, datr);
-    datr = flipud(datr)';
-    fwrite(fid1a, datr(:),'int16'); % append to .dat file
+    datr = flipud(datr);
+    datr=datr';
+    fwrite(fid, datr(:),'int16'); % append to .dat file
     %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
     board_adc = [board_adc board_adc_data];
 end

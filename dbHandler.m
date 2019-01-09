@@ -70,7 +70,8 @@ classdef dbHandler
                 key = obj.keyhash(workingDirectory, spike_waveform_info(i).unit,...
                     spike_waveform_info(i).channel);
                 
-                obj.db(key) = struct;
+                db = obj.db;
+                db(key) = struct;
                 s = obj.db(key);
                 s.unit = spike_waveform_info(i).unit;
                 s.channel = spike_waveform_info(i).channel;
@@ -149,7 +150,7 @@ classdef dbHandler
                     spike_waveform_info(i).goodness = goodness;
                 end
             end
-            unpack_wfs(good_cluster_idx, 'good');
+            unpack_wfs(good_cluster_idx, 'good'); 
             unpack_wfs(MUA_cluster_idx, 'MUA');
             
         end
@@ -238,7 +239,7 @@ classdef dbHandler
         function filter_raw_data(~)
            [origFiles, origDataPath] = ... % crucial distinction: files vs file (current)
                 uigetfile('*.rhd', 'Select an RHD2000 Data File', 'MultiSelect', 'on');
-            cd origDataPath
+            cd(origDataPath)
             if iscell(origFiles)
                 ts_label = origFiles{1};
             else
@@ -260,24 +261,34 @@ classdef dbHandler
 
             [~, idx] = sort({filearray.date});
             origFiles = origFiles(idx);
+            board_adc = [];
             for i=1:length(origFiles)
-                read_Intan_RHD2000_file_MML(fullfile(filearray(i).folder,...
-                    filearray(i).name),0)
+                [amplifier_data, frequency_parameters, board_adc_data] = read_Intan_RHD2000_file_MML_DJP(...
+                    fullfile(filearray(i).folder, filearray(i).name),0);
 
                 disp([num2str(i) ' of ' num2str(length(origFiles))])
 
                 tic
-                % DRY
-                amplifier_data_filtered = bandpass(amplifier_data' ,[350, 4900],...
-                frequency_parameters.amplifier_sample_rate,...
-                'ImpulseResponse', 'fir'); % fir does not shift peak of trough positions
+                % only runs once
+                if ~exist('a1', 'var')
+                    [b1, a1] = butter(3, 300/frequency_parameters.amplifier_sample_rate*2, 'high');
+                end
+                % filter
+                dataRAW = amplifier_data';
+                dataRAW = single(dataRAW);
 
-                amplifier_data_filtered = amplifier_data_filtered';
-                fwrite(fid, amplifier_data_filtered(:),'int16'); % append to .dat file
-                % DRY
+                datr = filter(b1, a1, dataRAW);
+                datr = flipud(datr);
+                datr = filter(b1, a1, datr);
+                datr = flipud(datr);
+                datr=datr';
+                fwrite(fid, datr(:),'int16'); % append to .dat file
+                %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
+                board_adc = [board_adc board_adc_data];
                 toc
             end
             fclose(fid); 
+            beep
         end
     end
 end
