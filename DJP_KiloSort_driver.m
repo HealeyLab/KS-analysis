@@ -30,7 +30,7 @@ end
 [~, idx] = sort({filearray.date});
 files = files(idx);
 for i=1:length(files)
-    read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0)
+    read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0);
     
     % only runs once
     if ~exist('a1', 'var')
@@ -46,7 +46,7 @@ for i=1:length(files)
     datr = filter(b1, a1, datr);
     datr = flipud(datr);
     datr=datr';
-    fwrite(fid, datr(:),'int16'); % append to .dat file
+    fwrite(fid1a, datr(:),'int16'); % append to .dat file
     %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
     board_adc = [board_adc board_adc_data];
 end
