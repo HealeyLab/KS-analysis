@@ -4,7 +4,7 @@ A MATLAB and Python framework for unpacking Kilosort/phy data, putting it into a
 This small repo is intended to be used in conjunction with zeebie15's [ephysSuite](https://github.com/zeebie15/ephysSuite) repo, since it makes some assumptions about how your data is structured. See that repository for instructions for how to set up your rig to output the right data format.
 
 ## Running Kilosort
-Kilosort seems to demand a lot of manual copy/pasting of entire files, and editing of parameters and such by hand. I tried to automate most of this in one script, which should take minimal editing to get running on your machine. Yes, this will involve hard-coding.
+Kilosort seems to demand a lot of manual copy/pasting of entire files, and editing of parameters and such by hand. I tried to automate most of this in one script, which should take minimal editing to get running on your machine. Yes, this will involve hard-coding. It might occur to you that you could just hardcode the files directly instead of through this script. I prefer doing things through the script because it allows me to leverage the (more or less) original templates kilosort provides from one place, without changing the default shape of the template files.
 
 First, you'll have to edit the line reading
 ```Matlab
@@ -14,6 +14,15 @@ to
 
 ```Matlab
 working_dir = 'path\to\this\repos\directory';
+```
+
+Next, you'll have to add two lines to the part of the code that edits the master_file_example_MOVEME that point to your installation of Kilosort and to your installation of npy-matlab.
+
+```Matlab
+C{6} = sprintf('pathToYourConfigFile = ''%s''; ', dataPath);
+% add the follwing lines below, with the indicated paths hardcoded:
+C{3} = addpath(genpath('PATH\TO\YOUR\KILOSORT\INSTALL')) % path to kilosort folder
+C{4} = addpath(genpath('PATH\TO\YOUR\NPY-MATLAB\INSTALL')) % path to npy-matlab scripts
 ```
 
 The defaults I have set in `params.py`, `master_file_example_MOVEME.m`, `StandardConfig_MOVEME.m`, and `createChannelMapFile.m` are for a linear array of four tetrodes. On the Intan RHD2000 system, which records 32 channels, I only use channels 9 through 24 (16 total), and these files specify this configuration. I encourage you to look at them, try to get an intuition for how they work, and adjust them to your electrode configuration.
@@ -66,9 +75,3 @@ Uses a the cortex-lab's spikes repository, which you should have installed, to g
 
 ### dbh.keyhash
 Produces a key for the containers.Map object to use for indexing a particular unit. The key includes the name of the recording, the time of the recording, the channel, and the cluster. Feel free to add more information to the key if your procedure demands it.
-
-
-
-
-
-
