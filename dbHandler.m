@@ -2,6 +2,7 @@
 % prop will point to .mat file with Containers.Map object comprised of
 % db = containers.Map('KeyType','char','ValueType', 'any');
 % will add to it with M(k) = v;
+
 %% How to get this started
 % db = containers.Map('KeyType','char','ValueType', 'any');
 % save('db.mat', 'db','-v7.3')
@@ -11,45 +12,176 @@
 % Third, find stimulus identities and times
 % Finally, put everything into a database :(
 
+% %
+% x1=cursor_info_1.Position(1);
+% x2=cursor_info_2.Position(1);
+% plot(board_adc(2,:))
+% board_adc(2,x1:x2) = 0;
+% plot(board_adc(2,:))
+% save('adc_data', 'board_adc', 'adc_sr', '-v7.3')
 %%
+
 classdef dbHandler
     properties
-        dbPath = 'C:\Users\danpo\Documents\MATLAB\db.mat';
+        dbPath = 'C:\Users\danpo\Documents\db_backup.mat';%'E:\DJP thesis sorting\db.mat';
         audioPathMDX = 'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdx';
         audioPathMDY = 'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdy';
         db = containers.Map; % initialized as none, basically
+        count = 0;
+        wf_keys = {} % a list of keys to use for wf_analysis
     end
-    methods % Static means that methods of this class are not
-       % associated with instances of this class.
+    methods 
         function obj = dbHandler()
             S = load(obj.dbPath); 
-            obj.db = S.db;
+            obj.db = S.db;   
+            keys = obj.db.keys;
+            for i = 1:length(keys)
+                s = obj.db(keys{i});
+                if s.for_wf_analysis
+                    obj.wf_keys{length(obj.wf_keys) + 1} = keys{i};
+                end
+            end
         end
 
         % Make a key for the Map to point to the unit info
-        function key = keyhash(~, workingDirectory, unit, channel)
+        function key = keyhash(~, workingDirectory, unit, channel, goodness)
             label = split(workingDirectory, '\');
             label = label{end};
             % key structure is dir&unit#&channel#, can split on '&'
-            key = [label '&' num2str(unit) '&' num2str(channel)];
+            key = [label '&' num2str(unit) '&' num2str(channel) '&' goodness];
         end
+        
+        %% Remove all entries with match to key
 
-        % Run per recording
-        % Make an entry for each unit in the recording
-        function add(obj) % to be called as dbHandler.add(pwd)
-            workingDirectory = pwd;
+        function remove(obj, key_family)
+            key_family = strsplit(key_family, '&');
+            key_family = key_family{1};
+ 
+            db = obj.db;
+            keys = db.keys;
+            for i = 1:length(keys)
+                if iscell(keys)
+                    whole_key = keys{i};
+                    key_cell = strsplit(whole_key, '&');
+                    key_str = key_cell{1};
+                    if strcmp(key_str, key_family)
+                        remove(obj.db, whole_key);
+                    end
+                end
+            end
+        end
+        
+        function [on, off, wav_files] = get_stim_on_off(obj,key)
+            s = obj.db(key);
+            if contains(s.folder, 'mdx')
+                audioPath = obj.audioPathMDX;
+            else
+                audioPath = obj.audioPathMDY;
+            end
             
-            [stim_timestamps, stim_identities, adc_sr] = obj.extract_stim_timestamps();
+            wav_files = dir([audioPath '\*.wav']);
+            for i = 1:length(wav_files)
+                [cur_wav, fs] = audioread(fullfile(wav_files(i).folder,...
+                    wav_files(i).name));
+                cur_wav_resampled = resample(cur_wav, s.amplifier_sampling_rate, fs);
+                wav_files(i).data = cur_wav_resampled(:,1);             
+            end
+            on = nan(length(s.stim_timestamps),1); off = nan(length(s.stim_timestamps),1);
+            for i = 1:length(s.stim_timestamps)
+                curr_wav_path = split(s.stim_identities{1}{i},'\');
+                curr_wav_name = curr_wav_path{end};
+                len = length(wav_files(strcmp({wav_files.name},curr_wav_name)).data);
+                on(i) = s.stim_timestamps(i) - len / 2;
+                off(i)= s.stim_timestamps(i) + len / 2;
+                
+            end
+        end
+        
+        function scatter(obj)
+            vec=[];
+            db = obj.db;
+            for i = 1:length(obj.wf_keys)
+                key = obj.wf_keys{i};
+                s = db(key);
+                disp(i)
+                if strcmp(db(key).goodness, 'good')
+                    %% So, my damn databse stores the center of the audio, not the beginning, so you need to find the beginning
+                    if isfield(db(key), 'stim_timestamps')
+                        [on, ~, ~]=get_stim_on_off(obj, key);
+
+                        total_spikes = 0;
+                        total_time = 0;
+                        for j = 2:length(db(key).stim_timestamps)-1 % ignore the first and last one because might be truncated.
+                            num_sp = length(s.spike_timestamps(...
+                                s.spike_timestamps>(on(2)-s.amplifier_sampling_rate * 500) &...
+                                s.spike_timestamps<on(2)));
+                            total_spikes = total_spikes + num_sp;
+                            total_time = total_time + 0.5;
+                        end
+                    else
+                        spike_ts = db(key).spike_timestamps;
+                        total_spikes = length(spike_ts);
+                        total_time = spike_ts(end) - spike_ts(1);
+                    end
+                    %% 
+                    vec = [vec; s.p2p s.sym total_spikes/total_time];
+                end
+            end
+            scatter(vec(:,1), vec(:,2), 'filled','m')
+            xlabel('p2p')
+            ylabel('symmetry')
+            
+            figure;
+            scatter3(vec(:,1), vec(:,2), vec(:,3))
+            xlabel('p2p')
+            ylabel('symmetry')
+            zlabel('fr')
+            title('Matt what do you think?')
+            
+        end
+        function show_keys(obj)
+            disp(obj.db.keys')
+        end
+        
+        % post hoc bug fix: didn't add stim info before. Hopefully will
+        % now!
+        function add_stim_info_to_all(obj)
+            db = obj.db;
+            keys = obj.db.keys;
+            
+            for i = 1:length(keys)
+                s = db(keys{i});
+                if ~isfield(s,'stim_timestamps') && ~isempty(dir(fullfile(s.folder, '*markers.txt')))
+                    [stim_timestamps, stim_identities, adc_sr] = obj.extract_stim_timestamps(s.folder);
+                    s.stim_timestamps = stim_timestamps;
+                    s.stim_identities = stim_identities;
+                    s.adc_sampling_rate = adc_sr;
+                    obj.db(keys{i}) = s;
+                
+                end
+            end
+            save(obj.dbPath, 'db','-v7.3');
+        end
+        %% Make an entry for each unit in the recording
+        % Run per recording
+        function add(obj) % to be called as dbHandler.add
+            fclose('all');            
+            workingDirectory = pwd;
+            has_stim_markers = ~isempty(dir('*markers.txt'));
+            if has_stim_markers
+                [stim_timestamps, stim_identities, adc_sr] = obj.extract_stim_timestamps(pwd);
+            end
             [spike_waveform_info, spike_timestamps, sp] = obj.getWaveFormsDriver();
-            %%
+            
             % get depth
-            depth = input('depth of probe (mm)\n');
+            depth = input('depth of probe (um)\n');
             % get context
             context = '';
             while ~(strcmp(context, 'habituation') || strcmp(context, 'random')...
+                    || strcmp(context, 'other')...
                     || strcmp(context, 't1') || strcmp(context, 't2')...
                     || strcmp(context, 't2') || strcmp(context, 't4'))
-                context = input('habituation, random, or t1/t2/t3/t4?\n','s');
+                context = input('habituation, random, or t1/t2/t3/t4, or other?\n','s');
             end
             
             % get hemisphere
@@ -64,15 +196,29 @@ classdef dbHandler
                 end 
             end
             
+            % use this recording for waveform analysis?
+            yn = '';
+            while ~strcmp(yn, 'y') && ~strcmp(yn, 'n')
+                yn = input('Should this recording be used for waveform analysis? y/n\n', 's');
+                if yn == 'y'
+                    for_wf_analysis = 1;
+                elseif yn == 'n'
+                    for_wf_analysis = 0;
+                end
+            end
+            
             % for each element in spike_waveform_info, which has info for
             % all units, 'good' and 'MUA'
+            obj.remove(workingDirectory);
             for i = 1:length(spike_waveform_info)
-                key = obj.keyhash(workingDirectory, spike_waveform_info(i).unit,...
-                    spike_waveform_info(i).channel);
                 
-                db = obj.db;
-                db(key) = struct;
-                s = obj.db(key);
+                key = obj.keyhash(workingDirectory, spike_waveform_info(i).unit,...
+                    spike_waveform_info(i).channel, spike_waveform_info(i).goodness);
+                % In case the number of units changed, we just wipe the
+                % slate clean here
+                
+                % Now we (re)add everything
+                s = struct;
                 s.unit = spike_waveform_info(i).unit;
                 s.channel = spike_waveform_info(i).channel;
                 s.folder = workingDirectory; % encapsulates day and such
@@ -82,34 +228,42 @@ classdef dbHandler
                 s.spike_timestamps = spike_timestamps(sp.clu == spike_waveform_info(i).unit);
                 s.amplifier_sampling_rate = sp.sample_rate;
                 % actual waveform storage
-                s.spike_waveforms = spike_waveform_info(i).goodness;
-                
+                s.spike_waveforms = spike_waveform_info(i).waveform;
+                s.for_wf_analysis = for_wf_analysis;
                 % complicated ones
                 s.depth = depth;
                 s.context = context;
                 s.hemisphere = hemisphere;
                 % adc stuff
-                s.stim_timestamps = stim_timestamps;
-                s.stim_identities = stim_identities;
-                s.adc_sampling_rate = adc_sr;
+                if has_stim_markers
+                    s.stim_timestamps = stim_timestamps;
+                    s.stim_identities = stim_identities;
+                    s.adc_sampling_rate = adc_sr;
+                end
+                % when was this added?
+                s.whenadded = datetime;
+                obj.db(key) = s;
             end
+            
+            db = obj.db;
             save(obj.dbPath, 'db','-v7.3');
-
         end
         
         function [spike_waveform_info, spike_timestamps, sp] = getWaveFormsDriver(~)
+            close all;
             
-            FRAC = 0.10; % fraction of all spikes to sample from
             dataDir = pwd;
             sp = loadKSdir(dataDir);
             
             gwfparams.sr = sp.sample_rate;
             gwfparams.dataDir = dataDir;
-            gwfparams.fileName = 'raw.dat';
+            gwfparams.fileName = 'raw_filtered.dat'; % this is so it errors out if you haven't filtetred the data already
             gwfparams.dataType = sp.dtype;
             gwfparams.nCh = sp.n_channels_dat;
             gwfparams.wfWin = [-(0.001*gwfparams.sr) 0.002*gwfparams.sr];  % Number of samples before and after spiketime to include in waveform
-            gwfparams.nWf = floor(length(sp.st) * FRAC);
+            % FRAC = 0.10; % fraction of all spikes to sample from
+            
+            gwfparams.nWf = 2000; % floor(length(sp.st) * FRAC);
             
             spike_timestamps = sp.st * sp.sample_rate;
             gwfparams.spikeTimes = ceil(spike_timestamps);
@@ -126,34 +280,224 @@ classdef dbHandler
             MUA_clusters  = cluster_quality(strcmp(cluster_quality.group, 'mua'),1);
             good_clusters = table2array(good_clusters);
             MUA_clusters  = table2array(MUA_clusters);
-            spike_waveform_info = struct; % empty struct that will increase in size 
+            spike_waveform_info = []; % empty struct that will increase in size 
             [ , good_cluster_idx] = intersect(wf.unitIDs, good_clusters);
             [ ,  MUA_cluster_idx] = intersect(wf.unitIDs, MUA_clusters);
             
             function unpack_wfs(g_or_m_idx, goodness)
                 figure;
+                if strcmp(goodness, 'good')
+                    title('good')
+                elseif strcmp(goodness, 'MUA')
+                    title('MUA')
+                end
+                
                 for i=1:length(g_or_m_idx) % for each good unit (cluster),...
                     wf_idx = find( wf.unitIDs == g_or_m_idx(i)); % getting index of current 'good' unit
 
                     cluster_id = wf.unitIDs(wf_idx); % getting index of current 'good' unit
                     best_channel = best_channels{best_channels.Cluster_id == cluster_id, 2}; % getting best channel for current unit
 
-                    cur_wf = wf.waveFormsMean(wf_idx, best_channel+1,:);
-                    cur_wf = squeeze(cur_wf);
+                    cur_wf = squeeze(wf.waveForms(wf_idx, :, best_channel+1,:))';
 
                     subplot(ceil(length(g_or_m_idx) / 4), 4, i);
-                    plot(cur_wf)
-                    title(['Cluster ' int2str(cluster_id) ', channel' int2str(best_channel+1)]);
-                    spike_waveform_info(i).channel = best_channel + 1;
-                    spike_waveform_info(i).unit = cluster_id;
-                    spike_waveform_info(i).waveform = cur_wf;
-                    spike_waveform_info(i).goodness = goodness;
+                    plot(nanmean(cur_wf, 2))
+                    title(['Clus ' int2str(cluster_id) ', chan' int2str(best_channel+1)]);
+                    new_struct = struct;
+                    new_struct.channel = best_channel + 1;
+                    new_struct.unit = cluster_id;
+                    new_struct.waveform = cur_wf;
+                    new_struct.goodness = goodness;
+                    spike_waveform_info = [spike_waveform_info new_struct];
                 end
             end
             unpack_wfs(good_cluster_idx, 'good'); 
             unpack_wfs(MUA_cluster_idx, 'MUA');
             
         end
+        function waveform_analysis(obj)
+            fig = figure('Visible','on','Position',[360,200,450,285]);
+
+            values = uicontrol('Style', 'text', 'String', '',...
+                        'Tag', 'p2psym',...
+                        'Position', [130, 10, 140, 25]);
+
+            type = uicontrol('Style', 'text', 'String', '',...
+                        'Tag', 'type',...
+                        'Position', [315, 240, 70, 25]);
+
+            status = uicontrol('Style', 'text', 'String', '',...
+                        'Tag', 'status',...
+                        'Position', [315, 200, 70, 25]);
+
+            progress = uicontrol('Style', 'text', 'String', '',...
+                        'Tag', 'progress',...
+                        'Position', [315, 170, 70, 25]);
+
+            good    = uicontrol('Style','pushbutton',...
+                         'String','Good',...
+                         'Position',[315,140,70,25],...
+                         'Callback',@good_Callback);
+
+            bad    = uicontrol('Style','pushbutton',...
+                         'String','Bad','Position',[315,100,70,25],...
+                         'Callback',@bad_Callback);
+
+            next = uicontrol('Style','pushbutton',...
+                         'String','next','Position',[315,60,70,25],...
+                         'Callback', @next_Callback);
+
+            back = uicontrol('Style','pushbutton',...
+                         'String','back','Position',[315,20,70,25],...
+                         'Callback', @back_Callback);
+
+            axes('Units','Pixels','Position',[50,60,200,185]); 
+
+            psth = uicontrol('Style','pushbutton',...
+                            'String', 'PSTH',...
+                            'Position', [50, 10, 70, 25],...
+                            'Callback', @psth_Callback);
+            
+            function good_Callback(source,~) 
+            % for if is good
+                [s,key] = get_s;
+                s.wf_analysis_goodness = 'Good';
+                obj.db(key) = s;
+                handle = ancestor(source, 'figure');
+                status_handle = findobj(handle, 'Tag', 'status');
+                set(status_handle, 'String', 'Included: good');                
+            end
+
+            function bad_Callback(source,~) 
+            % for if is bad
+                [s, key] = get_s;
+                s.wf_analysis_goodness = 'Bad';
+                obj.db(key) = s;
+                handle = ancestor(source, 'figure');
+                status_handle = findobj(handle, 'Tag', 'status');
+                set(status_handle, 'String', 'Included: bad');
+            end
+
+            function back_Callback(source,~) 
+            % Display contour plot of the currently selected data.
+                handle = ancestor(source, 'figure');
+                s = increment(-1, handle);
+                
+                status_handle = findobj(handle, 'Tag', 'status');
+                if isfield(s, 'wf_analysis_goodness')
+                    set(status_handle, 'String', s.wf_analysis_goodness);
+                else
+                    set(status_handle, 'String', 'Included: undecided');
+                end 
+            end
+
+            function next_Callback(source,~) 
+                % for getting next
+                handle = ancestor(source, 'figure');
+
+                s = increment(1, handle);
+                
+                status_handle = findobj(handle, 'Tag', 'status');
+                if isfield(s, 'wf_analysis_goodness')
+                    set(status_handle, 'String', s.wf_analysis_goodness);
+                else
+                    set(status_handle, 'String', 'Included: undecided');
+                end        
+            end        
+            
+            function s = increment(amt, handle)
+                obj.count = obj.count+amt;
+                
+                
+                [s, key] = get_s;
+
+                wf = s.spike_waveforms;
+                wf_mean = nanmean(wf,2);
+                plot(wf_mean, 'LineWidth', 2); hold on;
+                plot(wf_mean+nanstd(wf')', 'b');
+                plot(wf_mean-nanstd(wf')', 'b');  
+                
+                type_handle = findobj(handle, 'Tag', 'type');
+                set(type_handle, 'String', ['Sorted as:' s.goodness]);
+                
+                type_handle = findobj(handle, 'Tag', 'progress');
+                set(type_handle, 'String', [num2str(obj.count) '/' num2str(length(obj.wf_keys))]);
+                                
+                [Vmax,Imax] = max(wf_mean);
+                [Vmin,Imin] = min(wf_mean);
+                s.p2p = abs(Imax - Imin) / s.amplifier_sampling_rate * 1000 ;
+                s.sym = abs(Vmax/Vmin);
+                plot(Imax, Vmax, 'm*');
+                plot(Imin, Vmin, 'm*');
+                hold off;
+                obj.db(key) = s;
+                
+                values_handle = findobj(handle, 'Tag', 'p2psym');
+                set(values_handle, 'String', ['p2p: ' num2str(s.p2p) '  sym: ' num2str(s.sym)]);
+            end
+            
+            function [s,key] = get_s
+                keys = obj.wf_keys;
+                key = keys{obj.count};
+                s = obj.db(key);
+            end
+            
+            
+            function psth_Callback(~,~)
+                % will eventually be the callback for the save function
+                db = obj.db; keys = obj.wf_keys;
+                key = keys{obj.count};
+                s = db(key);
+                [on, off, wav_files] = obj.get_stim_on_off(key);
+                
+                % for each class of stim:
+                si = s.stim_identities{1};
+                usi = unique(si);
+                for i = 1:length(usi)
+                    % for each stim itself
+                    stim_inds = find(strcmp(si,usi{i}));
+                    raster_arr = cell(length(stim_inds),1);
+                    for j = 1:length(stim_inds)
+                        sp_ts = s.spike_timestamps;
+                        ind = stim_inds(j);
+                        start = on(ind) - 2 * s.amplifier_sampling_rate;
+                        stop = off(ind) + 2 * s.amplifier_sampling_rate;
+                        
+                        raster_arr{j} = ((intersect(...
+                            sp_ts(sp_ts > start),...
+                            sp_ts(sp_ts < stop))...
+                            - start) / s.amplifier_sampling_rate)';                        
+                    end
+                    
+                    figure;
+                    subplot(3,1,1);
+                    for k = 1:length(wav_files)
+                        if contains(usi{i}, wav_files(k).name)
+                            curr_wav = wav_files(k);
+                        end
+                    end
+                    
+                    spectrogram(... 
+                        [nan(2*s.adc_sampling_rate, 1); curr_wav.data; nan(2*s.adc_sampling_rate, 1)],...
+                        256, [],[],s.adc_sampling_rate, 'yaxis')
+                    colorbar('delete');
+                    title(curr_wav.name)
+                    
+                    subplot(3,1,2);
+                    [xpoints, ~] = plotSpikeRaster(raster_arr,...
+                            'PlotTYpe','vertline', 'XLimForCell', [0 (stop-start)/s.amplifier_sampling_rate]);
+                        
+                    histo_axes = subplot(3,1,3);    
+                    bin = 0.020; % bin size in s
+                    histogram(histo_axes, xpoints, (0:bin:(stop-start)/s.amplifier_sampling_rate)); % convert ms to s
+                    xlim([0, (stop-start)/s.amplifier_sampling_rate])
+                    % construct psth for that stim
+                end
+            end 
+
+        end
+        
+        
         
         % put one point per peak, please
         function cleaned_vec = clean_peaks(~, vec)
@@ -173,8 +517,9 @@ classdef dbHandler
         %     2. Downsample them to match the recording SR
         %     3. Cross correlate signals
         %     4. Detect peaks within TTL pulses        
-        function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj)
-            workingDirectory = pwd;
+        function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, curr_dir)
+            workingDirectory = curr_dir;
+            cd(workingDirectory)
             %% 1
             disp('adc data')
             % adc data
@@ -192,8 +537,8 @@ classdef dbHandler
             overunder = [diff(S.board_adc(2,:)) 0]; % add 0 at the end bc this cuts one off
             
             disp('cleaning peaks')
-            over = find(overunder > 0.5);
-            under = find(overunder < -0.5);
+            over = find(overunder > 0.75);
+            under = find(overunder < -0.75);
             over = obj.clean_peaks(over);
             under = obj.clean_peaks(under);        
             
@@ -231,12 +576,14 @@ classdef dbHandler
                 [co, lag] = xcorr(norm_adc_audio(over(i):under(i)), s.data);
                 [~,I] = max(abs(co));
                 lagDiff = lag(I);
-                timestamps(i) = over(i) + abs(lagDiff);
+                timestamps(i) = over(i) + abs(lagDiff); % Note: timestamp is the middle of the stimulus.
             end
             % extract_timestamps function ends here
         end
         
         function filter_raw_data(~)
+           target_dir = pwd;
+           
            [origFiles, origDataPath] = ... % crucial distinction: files vs file (current)
                 uigetfile('*.rhd', 'Select an RHD2000 Data File', 'MultiSelect', 'on');
             cd(origDataPath)
@@ -247,11 +594,10 @@ classdef dbHandler
             end
             %%
             ts_label = ts_label(1:end-4);
-            dataPath = fullfile(origDataPath,[ts_label '_Kilosort']);
-            dataFileName = fullfile(dataPath, 'raw.dat'); 
+            targetFileName = fullfile(target_dir, 'raw_filtered.dat'); 
 
             % open raw.dat to write
-            fid = fopen(dataFileName, 'w'); % open .dat file for writing
+            fid = fopen(targetFileName, 'w'); % open .dat file for writing
             filearray = [];
 
             %ordering files
@@ -287,9 +633,12 @@ classdef dbHandler
                 board_adc = [board_adc board_adc_data];
                 toc
             end
-            fclose(fid); 
+            fclose(fid);
+            cd(target_dir)
             beep
-        end
+        end   
+        
+        
     end
 end
 
