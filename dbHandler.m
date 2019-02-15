@@ -50,6 +50,15 @@ classdef dbHandler
             % key structure is dir&unit#&channel#, can split on '&'
             key = [label '&' num2str(unit) '&' num2str(channel) '&' goodness];
         end
+        function [wd, unit, channel, goodness] = dehash(~, key)
+            % returns info contained in keys
+            splitcell = strsplit(key, '&');
+            wd = splitcell{1};
+            unit = splitcell{2};
+            channel = splitcell{3};
+            goodness = splitcell{4};
+        end
+            
         
         %% Remove all entries with match to key
 
@@ -91,8 +100,8 @@ classdef dbHandler
                 curr_wav_path = split(s.stim_identities{1}{i},'\');
                 curr_wav_name = curr_wav_path{end};
                 len = length(wav_files(strcmp({wav_files.name},curr_wav_name)).data);
-                on(i) = s.stim_timestamps(i) - len / 2;
-                off(i)= s.stim_timestamps(i) + len / 2;
+                on(i) = s.stim_timestamps(i); %
+                off(i)= s.stim_timestamps(i) + len; % / 2;
                 
             end
         end
@@ -143,6 +152,70 @@ classdef dbHandler
             disp(obj.db.keys')
         end
         
+        
+        function keycell = cross_correlograms(obj)
+            % First, separate all keys into 
+            keys = obj.db.keys;
+            keycell = cell(length(keys), 4 ); % rows, columns
+            for i = 1:length(keys)
+                [folder, unit, channel, goodness] = obj.dehash(keys{i});
+                keycell{i,1} = folder;
+                keycell{i,2} = unit;
+                keycell{i,3} = channel;
+                keycell{i,4} = goodness;
+            end
+            
+            uniquecell = unique(keycell(:,1));
+            
+            % find cells from same recording
+            for i = 1:length(uniquecell)
+                recording_indices = find(strcmp(uniquecell{i},keycell(:,1)));
+                
+                % find cells from same tetrode
+                recording_cells = keycell(recording_indices,:); % cells from same recording
+                % note: channels can be 1 thru 16
+                % for each tetrode, see if there are shared cells
+                for j = 1:4
+                    high = j * 4;
+                    low = high - 3;
+
+                    tetrode_cells = recording_cells(...
+                        cellfun(@str2num, recording_cells(:,3)) >= low &...
+                        cellfun(@str2num, recording_cells(:,3)) <= high,:);
+                    
+                    if size(tetrode_cells,1) > 1
+                        obj.cross_corr_helper(tetrode_cells)
+                    end
+                end
+            end
+        end
+        
+        function cross_corr_helper(obj,tet_cells)
+            db = obj.db;
+            figure;
+            hold on;
+            for i = 1:size(tet_cells,1)
+                key_i = tet_cells(i,:);
+                s_i = db(obj.keyhash(key_i{1}, key_i{2}, key_i{3}, key_i{4}));
+                
+                for j = i+1:size(tet_cells,1)
+                    
+                    key_j = tet_cells(j,:);
+                    s_j = db(obj.keyhash(key_j{1}, key_j{2}, key_j{3}, key_j{4}));
+                    
+                    [tsOffsets, ~, ~] = crosscorrelogram(...
+                        s_i.spike_timestamps / 1000, s_j.spike_timestamps / 1000, [-0.100 0.100]);
+                    
+                    subplot(length(tet_cells),length(tet_cells),...
+                        (i-1) * length(tet_cells) + j)
+                    
+                    hist(tsOffsets, 100);
+                    xlim([-.1, .1]);
+                end
+            end      
+            hold off;
+        end
+        
         % post hoc bug fix: didn't add stim info before. Hopefully will
         % now!
         function add_stim_info_to_all(obj)
@@ -151,7 +224,10 @@ classdef dbHandler
             
             for i = 1:length(keys)
                 s = db(keys{i});
-                if ~isfield(s,'stim_timestamps') && ~isempty(dir(fullfile(s.folder, '*markers.txt')))
+                % first boolean, I removed the ~, making it positive
+                disp(s.folder)
+                    
+                if isfield(s,'stim_timestamps') && ~isempty(dir(fullfile(s.folder, '*markers.txt')))
                     [stim_timestamps, stim_identities, adc_sr] = obj.extract_stim_timestamps(s.folder);
                     s.stim_timestamps = stim_timestamps;
                     s.stim_identities = stim_identities;
@@ -460,8 +536,8 @@ classdef dbHandler
                     for j = 1:length(stim_inds)
                         sp_ts = s.spike_timestamps;
                         ind = stim_inds(j);
-                        start = on(ind) - 2 * s.amplifier_sampling_rate;
-                        stop = off(ind) + 2 * s.amplifier_sampling_rate;
+                        start = on(ind) - 1 * s.amplifier_sampling_rate;
+                        stop = off(ind) + 3 * s.amplifier_sampling_rate;
                         
                         raster_arr{j} = ((intersect(...
                             sp_ts(sp_ts > start),...
@@ -481,14 +557,15 @@ classdef dbHandler
                         [nan(2*s.adc_sampling_rate, 1); curr_wav.data; nan(2*s.adc_sampling_rate, 1)],...
                         256, [],[],s.adc_sampling_rate, 'yaxis')
                     colorbar('delete');
-                    title(curr_wav.name)
+                    
+                    title([curr_wav.name '    ' s.context '  why on earth does this histogram work']);
                     
                     subplot(3,1,2);
                     [xpoints, ~] = plotSpikeRaster(raster_arr,...
                             'PlotTYpe','vertline', 'XLimForCell', [0 (stop-start)/s.amplifier_sampling_rate]);
                         
                     histo_axes = subplot(3,1,3);    
-                    bin = 0.020; % bin size in s
+                    bin = 0.010; % bin size in s
                     histogram(histo_axes, xpoints, (0:bin:(stop-start)/s.amplifier_sampling_rate)); % convert ms to s
                     xlim([0, (stop-start)/s.amplifier_sampling_rate])
                     % construct psth for that stim
@@ -567,17 +644,27 @@ classdef dbHandler
                 wav_files(i).data = cur_wav_resampled(:,1);             
             end
             
-            timestamps = NaN(length(over),1);
-            for i=1:length(over)
-                curr_wav_path = split(filecell{1}{i},'\');
-                curr_wav_name = curr_wav_path{end};
-                s = wav_files(strcmp({wav_files.name},curr_wav_name));
-                disp(['Cross correlating Stimulus ' int2str(i)])
-                [co, lag] = xcorr(norm_adc_audio(over(i):under(i)), s.data);
-                [~,I] = max(abs(co));
-                lagDiff = lag(I);
-                timestamps(i) = over(i) + abs(lagDiff); % Note: timestamp is the middle of the stimulus.
-            end
+            timestamps = over;
+%             timestamps = NaN(length(over),1);
+%             for i=1:length(over)
+%                 curr_wav_path = split(filecell{1}{i},'\');
+%                 curr_wav_name = curr_wav_path{end};
+%                 s = wav_files(strcmp({wav_files.name},curr_wav_name));
+%                 disp(['Cross correlating Stimulus ' int2str(i)])
+%                 [co, lag] = xcorr(norm_adc_audio(over(i):under(i)), s.data);
+%                 [~,I] = max(abs(co));
+%                 lagDiff = lag(I);
+% 
+%                 timestamps(i) = over(i) + abs(lagDiff); % Note: timestamp is the middle of the stimulus.
+%             end
+%             plot(adc_audio)
+%             hold on;
+% 
+%             for u = 1:length(timestamps)
+%             plot(timestamps(u), 1 ,'r*')
+%             end
+%             plot(S.board_adc(2,:));
+%             hold off;
             % extract_timestamps function ends here
         end
         
