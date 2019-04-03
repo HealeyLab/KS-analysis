@@ -28,12 +28,18 @@ classdef dbHandler
         audioPathMDY = 'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdy';
         db = containers.Map; % initialized as none, basically
         count = 0;
+
         wf_keys = {} % a list of keys to use for wf_analysis
+        
+        BB = [0 63 92] / 255;
+        BN = [87 82 126] / 255; 
+        NB= [157 99 136] / 255;
+        NN = [209 127 127] / 255;
     end
     methods 
         function obj = dbHandler()
             S = load(obj.dbPath); 
-            obj.db = S.db;   
+            obj.db = S.db;
             keys = obj.db.keys;
             for i = 1:length(keys)
                 s = obj.db(keys{i});
@@ -95,14 +101,16 @@ classdef dbHandler
                 cur_wav_resampled = resample(cur_wav, s.amplifier_sampling_rate, fs);
                 wav_files(i).data = cur_wav_resampled(:,1);             
             end
+            % aligning sr of stim timestamps
+            s.stim_timestamps = s.stim_timestamps / s.adc_sampling_rate * s.amplifier_sampling_rate;
+            % wait, stim_timestamps are in a different sampling rate right?
             on = nan(length(s.stim_timestamps),1); off = nan(length(s.stim_timestamps),1);
             for i = 1:length(s.stim_timestamps)
                 curr_wav_path = split(s.stim_identities{1}{i},'\');
                 curr_wav_name = curr_wav_path{end};
                 len = length(wav_files(strcmp({wav_files.name},curr_wav_name)).data);
-                on(i) = s.stim_timestamps(i); %
-                off(i)= s.stim_timestamps(i) + len; % / 2;
-                
+                on(i) = s.stim_timestamps(i); 
+                off(i)= s.stim_timestamps(i) + len;
             end
         end
         
@@ -114,38 +122,77 @@ classdef dbHandler
                 s = db(key);
                 disp(i)
                 if strcmp(db(key).goodness, 'good')
-                    %% So, my damn databse stores the center of the audio, not the beginning, so you need to find the beginning
                     if isfield(db(key), 'stim_timestamps')
-                        [on, ~, ~]=get_stim_on_off(obj, key);
+                        [on, off, ~]=get_stim_on_off(obj, key);
 
                         total_spikes = 0;
                         total_time = 0;
                         for j = 2:length(db(key).stim_timestamps)-1 % ignore the first and last one because might be truncated.
                             num_sp = length(s.spike_timestamps(...
-                                s.spike_timestamps>(on(2)-s.amplifier_sampling_rate * 500) &...
-                                s.spike_timestamps<on(2)));
+                                s.spike_timestamps>on(j) &...
+                                s.spike_timestamps<off(j)));
                             total_spikes = total_spikes + num_sp;
-                            total_time = total_time + 0.5;
+                            total_time = total_time +...
+                                1 / s.adc_sampling_rate * (off(j) - on(j));
                         end
                     else
                         spike_ts = db(key).spike_timestamps;
                         total_spikes = length(spike_ts);
-                        total_time = spike_ts(end) - spike_ts(1);
+                        total_time = (spike_ts(end) - spike_ts(1)) * 1 / s.amplifier_sampling_rate;
                     end
-                    %% 
-                    vec = [vec; s.p2p s.sym total_spikes/total_time];
+                    vec = [vec; s.p2p s.sym total_spikes/total_time s.depth];
                 end
             end
-            scatter(vec(:,1), vec(:,2), 'filled','m')
-            xlabel('p2p')
-            ylabel('symmetry')
-            
+            %scatter
+            scatter(vec(:,1), vec(:,2), 'filled','k', 'jitter', 'on', 'jitterAmount', 0.01)
+            xlabel('peak to peak width (ms)')
+            ylabel('symmetry ratio')
+            title('BS and NS neuron clustering')
+
+            %scatter w depth
             figure;
-            scatter3(vec(:,1), vec(:,2), vec(:,3))
+            scatter(vec(:,1), vec(:,4), 'filled','k', 'jitter', 'on', 'jitterAmount', 0.01)
+            xlabel('peak to peak width (ms)')
+            ylabel('depth (um)')
+            title('width vs depth')
+            
+            %p2pvs fr
+            figure;
+            scatter(vec(:,1), vec(:,3), 'filled','k', 'jitter', 'on', 'jitterAmount', 0.01)
+            xlabel('peak to peak width (ms)')
+            ylabel('evoked firing rate (Hz)')
+            title('Peak to peak vs firing rate')
+            % k-means is garbage here
+            idx = kmeans(vec(:,[1 3]), 3, 'Options', statset('Display','final'), 'Replicates', 5);
+            scatter(vec(idx==1,1), vec(idx==1,3), 'MarkerEdgeColor', obj.BB, 'MarkerFaceColor',obj.BB, 'jitter', 'on', 'jitterAmount', 0.01)
+            hold on;
+            scatter(vec(idx==2,1), vec(idx==2,3), 'MarkerEdgeColor', obj.NN,'MarkerFaceColor', obj.NN, 'jitter', 'on', 'jitterAmount', 0.01)
+%             scatter(vec(idx==3,1), vec(idx==3,3), 'MarkerEdgeColor', 'k','MarkerFaceColor', 'k')
+%             
+            %fr vs depth
+            figure;
+            scatter(vec(:,3), vec(:,4), 'filled','m', 'jitter', 'on')
+            xlabel('Evoked firing rate (Hz)')
+            ylabel('Depth (um)')
+            title('fr vs depth')
+            
+            % show kmeans for p2p vs sym
+            figure;
+            idx = kmeans(vec(:,1:2), 2, 'MaxIter',100, 'Options', statset('Display','final'), 'Replicates', 5);
+            scatter(vec(idx==1,1), vec(idx==1,2), 'MarkerEdgeColor', obj.BB, 'MarkerFaceColor',obj.BB)%, 'jitter', 'on')
+            hold on;
+            scatter(vec(idx==2,1), vec(idx==2,2), 'MarkerEdgeColor', obj.NN,'MarkerFaceColor', obj.NN)%, 'jitter', 'on')
+            xlabel('peak to peak width (ms)')
+            ylabel('symmetry ratio')
+            line([0.43 0.43], [0 .7], 'Color', 'k');
+            title('BS and NS neuron clustering')
+            
+            % p2p vs sym vs fr
+            figure;
+            scatter3(vec(:,1), vec(:,2), vec(:,3), 'jitter', 'on')
             xlabel('p2p')
             ylabel('symmetry')
             zlabel('fr')
-            title('Matt what do you think?')
             
         end
         function show_keys(obj)
@@ -153,7 +200,8 @@ classdef dbHandler
         end
         
         
-        function keycell = cross_correlograms(obj)
+            
+        function [BBavg, NNavg, BNavg, NBavg] = cross_correlograms(obj)
             % First, separate all keys into 
             keys = obj.db.keys;
             keycell = cell(length(keys), 4 ); % rows, columns
@@ -164,7 +212,7 @@ classdef dbHandler
                 keycell{i,3} = channel;
                 keycell{i,4} = goodness;
             end
-            
+            BBavg = []; NNavg = []; BNavg = []; NBavg = [];
             uniquecell = unique(keycell(:,1));
             
             % find cells from same recording
@@ -184,16 +232,65 @@ classdef dbHandler
                         cellfun(@str2num, recording_cells(:,3)) <= high,:);
                     
                     if size(tetrode_cells,1) > 1
-                        obj.cross_corr_helper(tetrode_cells)
+                        xcorr_filename = ['C:\Users\danpo\Documents\dbh_imgs\'...
+                            uniquecell{i} '_tetrode' num2str(floor(low/4) + 1) '_xcorr.png']; % previously saved as jpg, but now I need high quality stuff 
+                        
+                        [fig, tosave,...
+                        BBavg,NNavg,BNavg,NBavg] = obj.cross_corr_helper(tetrode_cells,...
+                        BBavg,NNavg,BNavg,NBavg);
+                        
+                        if tosave
+                            saveas(fig, xcorr_filename)
+                            disp(xcorr_filename)
+                        end
+                        close(fig)
+
                     end
                 end
             end
         end
         
-        function cross_corr_helper(obj,tet_cells)
+        % same as above function but just for one key
+        function fig = cross_correlogram_for_gui(obj,gui_key)
+            % First, separate all keys into 
+            keys = obj.db.keys;
+            keycell = cell(length(keys), 4 ); % rows, columns
+            for i = 1:length(keys)
+                [folder, unit, channel, goodness] = obj.dehash(keys{i});
+                keycell{i,1} = folder;
+                keycell{i,2} = unit;
+                keycell{i,3} = channel;
+                keycell{i,4} = goodness;
+            end
+            
+            [filefolder,~,channel,~] = obj.dehash(gui_key);
+            % find cells from same recording
+            recording_indices = find(strcmp(filefolder,keycell(:,1)));
+
+            % find cells from same tetrode
+            recording_cells = keycell(recording_indices,:); % cells from same recording
+            % note: channels can be 1 thru 16, use modulus math to figure
+            % out which range a particular one you're dealing with
+            
+            low = floor(channel / 4) + 1;
+            high = low + 3;
+            
+            tetrode_cells = recording_cells(...
+                cellfun(@str2num, recording_cells(:,3)) >= low &...
+                cellfun(@str2num, recording_cells(:,3)) <= high,:);
+
+            if size(tetrode_cells,1) > 1
+                fig = obj.cross_corr_helper(tetrode_cells);
+            end
+        end
+        
+        function [fig, tosave,...
+                BBavg, NNavg, BNavg, NBavg] = cross_corr_helper(obj,tet_cells,...
+                BBavg, NNavg, BNavg, NBavg)
             db = obj.db;
-            figure;
+            fig = figure('units','normalized','outerposition',[0 0 1 1]);
             hold on;
+            
             for i = 1:size(tet_cells,1)
                 key_i = tet_cells(i,:);
                 s_i = db(obj.keyhash(key_i{1}, key_i{2}, key_i{3}, key_i{4}));
@@ -206,14 +303,67 @@ classdef dbHandler
                     [tsOffsets, ~, ~] = crosscorrelogram(...
                         s_i.spike_timestamps / 1000, s_j.spike_timestamps / 1000, [-0.100 0.100]);
                     
-                    subplot(length(tet_cells),length(tet_cells),...
-                        (i-1) * length(tet_cells) + j)
+                    subplot(length(tet_cells)-1,length(tet_cells)-1,...
+                        (i-1) * length(tet_cells) + j)   
+                    h = histogram(tsOffsets, 100);
                     
-                    hist(tsOffsets, 100);
+                    % set color                    
+                    BB = obj.BB; NN = obj.NN;
+                    BN = obj.BN; NB = obj.NB;
+                    set(gca, 'YTick', [], 'XTick', [])
                     xlim([-.1, .1]);
+                    yl = ylim; line([0 0], [0 yl(2)], 'Color', 'k');
+                    
+                    tosave = isfield(s_i, 'p2p') && isfield(s_j, 'p2p');
+                    if tosave
+                        if s_i.p2p >= .43 && s_j.p2p >= .43
+                            h.FaceColor = BB; h. EdgeColor = BB;
+                        elseif s_i.p2p < .43 && s_j.p2p < .43
+                            h.FaceColor = NN; h. EdgeColor = NN;
+                        elseif s_i.p2p >= .43 && s_j.p2p < .43
+                            h.FaceColor = BN; h. EdgeColor = BN;
+                        elseif s_i.p2p < .43 && s_j.p2p >= .43
+                            h.FaceColor = NB; h.EdgeColor = NB;
+                        end
+                        
+                    %% quick analysis bit here at the end
+                    % will get devation from median. value of zero means
+                    % flat, value of negative meas inhibition, value of
+                    % positive means excitation
+                    
+                    % I only took from one side because though xcorr isn't
+                    % really commutative, you just don't see it playing out
+                    % that way in the data.
+                        if j > i
+                            N = histcounts(tsOffsets, 100);
+                            %TODO: MAKE THIS EVOKED ACTIVITY
+                            % so this is median deviation. Wish me luck.
+                            [lmi, l_min] = min(N(1:50));  [lma, l_max] = max(N(1:50)); 
+                            [rmi, r_min] = min(N(51:100)); [rma, r_max] = max(N(51:100));
+                            to_add = [l_min-50 l_max-50 r_min r_max]; % fix index
+
+                            if s_i.p2p >= .43 && s_j.p2p >= .43
+                                BBavg = [BBavg; to_add];
+                            elseif s_i.p2p < .43 && s_j.p2p < .43
+                                NNavg = [NNavg; to_add];
+                            elseif s_i.p2p >= .43 && s_j.p2p < .43
+%                                 if max_ind <= 2
+                                BNavg = [BNavg; to_add];
+%                                 else
+%                                     NBavg = [NBavg; l_min l_max r_min r_max];
+%                                 end
+                            elseif s_i.p2p < .43 && s_j.p2p >= .43
+%                                 if max_ind <= 2
+                                NBavg = [NBavg; to_add];
+%                                 else
+%                                     BNavg = [BNavg; l_min l_max r_min r_max];
+%                                 end
+                            end
+                        end
+                    end
                 end
             end      
-            hold off;
+        hold off;
         end
         
         % post hoc bug fix: didn't add stim info before. Hopefully will
@@ -392,7 +542,7 @@ classdef dbHandler
             
         end
         function waveform_analysis(obj)
-            fig = figure('Visible','on','Position',[360,200,450,285]);
+            fig = figure('Visible','on','Position',[360,200,550,300]);
 
             values = uicontrol('Style', 'text', 'String', '',...
                         'Tag', 'p2psym',...
@@ -431,8 +581,13 @@ classdef dbHandler
 
             psth = uicontrol('Style','pushbutton',...
                             'String', 'PSTH',...
-                            'Position', [50, 10, 70, 25],...
+                            'Position', [400, 60, 70, 25],...
                             'Callback', @psth_Callback);
+                        
+            xcorr = uicontrol('Style', 'pushbutton',...
+                'String', 'xcorr',...
+                'Position', [400, 100, 70, 25],...
+                'Callback', @xcorr_Callback);
             
             function good_Callback(source,~) 
             % for if is good
@@ -536,8 +691,8 @@ classdef dbHandler
                     for j = 1:length(stim_inds)
                         sp_ts = s.spike_timestamps;
                         ind = stim_inds(j);
-                        start = on(ind) - 1 * s.amplifier_sampling_rate;
-                        stop = off(ind) + 3 * s.amplifier_sampling_rate;
+                        start = on(ind) - 2 * s.amplifier_sampling_rate;
+                        stop = off(ind) + 2 * s.amplifier_sampling_rate;
                         
                         raster_arr{j} = ((intersect(...
                             sp_ts(sp_ts > start),...
@@ -570,11 +725,14 @@ classdef dbHandler
                     xlim([0, (stop-start)/s.amplifier_sampling_rate])
                     % construct psth for that stim
                 end
-            end 
+            end
+            
+            function xcorr_Callback(~,~)
+                [~,key] = get_s;
+                nothin = obj.cross_correlogram_for_gui(key);
+            end
 
         end
-        
-        
         
         % put one point per peak, please
         function cleaned_vec = clean_peaks(~, vec)
@@ -588,13 +746,12 @@ classdef dbHandler
             cleaned_vec = vec;
         end
         
-        
+        function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, curr_dir)
         %     Logic:
         %     1. Load wav files, text files and audio adc files
         %     2. Downsample them to match the recording SR
         %     3. Cross correlate signals
-        %     4. Detect peaks within TTL pulses        
-        function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, curr_dir)
+        %     4. Detect peaks within TTL pulses 
             workingDirectory = curr_dir;
             cd(workingDirectory)
             %% 1
@@ -623,6 +780,8 @@ classdef dbHandler
             disp('adc audio')
             adc_audio = S.board_adc(1,:);
             norm_adc_audio = adc_audio - mean(adc_audio(1:S.adc_sr));
+            [b1, a1] = butter(3, 500/S.adc_sr * 2, 'high');
+            norm_adc_audio =  filter(b1, a1, norm_adc_audio);
             
             % text files for stim id's
             text_path = dir('*markers.txt');
@@ -641,31 +800,39 @@ classdef dbHandler
                 [cur_wav, fs] = audioread(fullfile(wav_files(i).folder,...
                     wav_files(i).name));
                 cur_wav_resampled = resample(cur_wav, S.adc_sr, fs);
+                cur_wav_resampled =  filter(b1, a1, cur_wav_resampled);
+
                 wav_files(i).data = cur_wav_resampled(:,1);             
             end
             
-            timestamps = over;
-%             timestamps = NaN(length(over),1);
-%             for i=1:length(over)
-%                 curr_wav_path = split(filecell{1}{i},'\');
-%                 curr_wav_name = curr_wav_path{end};
-%                 s = wav_files(strcmp({wav_files.name},curr_wav_name));
-%                 disp(['Cross correlating Stimulus ' int2str(i)])
-%                 [co, lag] = xcorr(norm_adc_audio(over(i):under(i)), s.data);
-%                 [~,I] = max(abs(co));
-%                 lagDiff = lag(I);
-% 
-%                 timestamps(i) = over(i) + abs(lagDiff); % Note: timestamp is the middle of the stimulus.
-%             end
-%             plot(adc_audio)
+%             timestamps = over;
 %             hold on;
-% 
-%             for u = 1:length(timestamps)
-%             plot(timestamps(u), 1 ,'r*')
-%             end
-%             plot(S.board_adc(2,:));
+%             plot(S.board_adc(2,:))
+%             plot(S.board_adc(1,:))
+            timestamps = NaN(length(over),1);
+            
+            for i=1:length(over)
+                curr_wav_path = split(filecell{1}{i},'\');
+                curr_wav_name = curr_wav_path{end};
+                s = wav_files(strcmp({wav_files.name},curr_wav_name));
+%               plot(under(i), 1 ,'r*')
+%               plot(under(i)-length(s.data), 1 ,'r*')
+                disp(['Cross correlating Stimulus ' int2str(i)])
+                [co, lag] = xcorr(norm_adc_audio(over(i):under(i)), s.data);
+                [~,I] = max((co));
+                lagDiff = lag(I);
+%                 hold on;
+%                 plot(norm_adc_audio(over(i):under(i)))
+%                 plot([zeros(abs(lag(I)),1); s.data])
+% %                 plot(lag(I), .2, 'r*')
+                timestamps(i) = over(i) + abs(lagDiff); % Note: timestamp is the middle of the stimulus.
+%                 close all
+            end
+%             hold on;
+%             plot(norm_adc_audio)
+%             plot(timestamps, ones(length(timestamps),1), 'v');
 %             hold off;
-            % extract_timestamps function ends here
+%             close all
         end
         
         function filter_raw_data(~)
@@ -724,8 +891,6 @@ classdef dbHandler
             cd(target_dir)
             beep
         end   
-        
-        
     end
 end
 

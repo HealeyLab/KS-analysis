@@ -31,22 +31,22 @@ end
 files = files(idx);
 for i=1:length(files)
     read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0);
-    
-    % only runs once
-    if ~exist('a1', 'var')
-        [b1, a1] = butter(3, 300/frequency_parameters.amplifier_sample_rate*2, 'high');
-    end
-
-    % filter
-    dataRAW = amplifier_data';
-    dataRAW = single(dataRAW);
-
-    datr = filter(b1, a1, dataRAW);
-    datr = flipud(datr);
-    datr = filter(b1, a1, datr);
-    datr = flipud(datr);
-    datr=datr';
-    fwrite(fid, datr(:),'int16'); % append to .dat file
+%     
+%     % only runs once
+%     if ~exist('a1', 'var')
+%         [b1, a1] = butter(3, 300/frequency_parameters.amplifier_sample_rate*2, 'high');
+%     end
+% 
+%     % filter
+%     dataRAW = amplifier_data';
+%     dataRAW = single(dataRAW);
+% 
+%     datr = filter(b1, a1, dataRAW);
+%     datr = flipud(datr);
+%     datr = filter(b1, a1, datr);
+%     datr = flipud(datr);
+%     datr=datr';
+%     fwrite(fid, datr(:),'int16'); % append to .dat file
     %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
     board_adc = [board_adc board_adc_data];
 end
@@ -80,7 +80,7 @@ clear amplifier_channels amplifier_data aux_input_channels aux_input_data ...
         t_amplifier t_aux_input t_dig t_supply_voltage
 %% Run Kilosort
 % copy master file example and  standard config and then edit them
-working_dir = 'C:\Users\danpo\Documents\MATLAB\DJP_KiloSort';
+working_dir = 'C:\Users\danpo\Documents\MATLAB\DJP_KiloSort\KS-analysis';
 
 ChannelMapFile_orig      = fullfile(working_dir, 'createChannelMapFile.m');
 master_file_example_orig = fullfile(working_dir, 'master_file_example_MOVEME.m');
