@@ -29,6 +29,8 @@ The defaults I have set in `params.py`, `master_file_example_MOVEME.m`, `Standar
 
 To run the script, make sure you have Kilosort and phy installed and are in the same directory as your .rhd files and run `DJP_KiloSort_Driver.m`.
 
+Once you've run Kilosort, make sure to add the right \*markers.txt and \*stimtimes.txt files to the Kilosort folder. To check for the right pair of folders, make sure the first and last timestamp in the \*stimtimes.txt file corresponds to the beginning and end of the recording.
+
 ## Running analysis
 To analyze your data, I designed a class named dbHandler for manipulating a MATLAB container.Map object that serves as your databse. Before you can use this class, you have to save a .mat file containing an empty container.Map object by running the following code in the directory you want to save your database:
 
