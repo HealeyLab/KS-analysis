@@ -33,4 +33,4 @@ def export_best_channels(path):
 
 if __name__ == '__main__':
     path = str(sys.argv[1])
-    output_best_channels(path)
+    export_best_channels(path)

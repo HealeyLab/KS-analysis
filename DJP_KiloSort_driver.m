@@ -1,6 +1,6 @@
 %% Author: DJP
 close all;
-tic
+
 %% Conversion
 [files, origDataPath] = ... % crucial distinction: files vs file (current)
     uigetfile('*.rhd', 'Select an RHD2000 Data File', 'MultiSelect', 'on');
@@ -19,11 +19,11 @@ dataPath = fullfile(origDataPath,[ts_label '_Kilosort' depth]);
 mkdir(dataPath)
 addpath(dataPath)
 %%
-dataFileName = fullfile(dataPath, 'raw.dat'); % [dataPath '\Kilosort_alldata\raw.dat'] % make .dat file
+dataFileName = fullfile(dataPath, 'raw_filtered.dat'); % [dataPath '\Kilosort_alldata\raw.dat'] % make .dat file
 % saving adc data, too
 board_adc = [];
 % open raw.dat to write
-fid1a = fopen(dataFileName, 'w'); % open .dat file for writing
+fid = fopen(dataFileName, 'w'); % open .dat file for writing
 
 filearray = [];
 for i = 1:length(files)
@@ -52,6 +52,7 @@ for i=1:length(files)
     datr = flipud(datr);
     datr=datr';
     fwrite(fid1a, datr(:),'int16'); % append to .dat file
+
     %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
     if size(board_adc_data, 1) == 2
         board_adc_data = [NaN(1, size(board_adc_data, 2)); board_adc_data];
@@ -59,26 +60,26 @@ for i=1:length(files)
     board_adc = [board_adc board_adc_data];
 end
 
-fclose(fid1a);
+fclose(fid);
 
 adc_sr=frequency_parameters.board_adc_sample_rate;
 save(fullfile(dataPath, 'adc_data'), 'board_adc', 'adc_sr', '-v7.3')
 %% make params.py
 fid2 = fopen(fullfile(dataPath, 'params.py'),'w');
 
-dat_path = 'raw.dat';
+dat_path = 'raw_filtered.dat';
 n_channels_dat = string(length(amplifier_channels));
 dtype = 'int16';
 offset = 0;
 sample_rate = string(frequency_parameters.amplifier_sample_rate);
-hp_filtered = 'False';
+hp_filtered = 'True';
 
 fprintf(fid2, 'dat_path = r''%s''\n', dat_path);
 fprintf(fid2, 'n_channels_dat = %s\n', n_channels_dat); %2d means two digit
 fprintf(fid2, 'dtype = ''%s''\n', dtype);
 fprintf(fid2, 'offset = 0\n');
 fprintf(fid2, 'sample_rate = %s.\n', sample_rate);
-fprintf(fid2, 'hp_filtered = False\n');
+fprintf(fid2, 'hp_filtered = %s\n', hp_filtered);
 
 fclose(fid2);
 clear fid2 dat_path dtype offset hp_filtered 
@@ -203,3 +204,4 @@ master_file_example_MOVEME
 beep
 pushBulletDriver(strjoin(['done at ', string(datetime)]));
 toc
+
