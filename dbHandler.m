@@ -221,7 +221,8 @@ classdef dbHandler
                 cur_wav_resampled = resample(cur_wav, S.adc_sr, fs);
                 wav_files(i).data = cur_wav_resampled(:,1);             
             end
-            
+
+            %% 3
             timestamps = NaN(length(over),1);
             for i=1:length(over)
                 curr_wav_path = split(filecell{1}{i},'\');

@@ -12,7 +12,10 @@ else
     ts_label = files;
 end
 ts_label = ts_label(1:end-4);
-dataPath = fullfile(origDataPath,[ts_label '_Kilosort']);
+% if you are aggregating things for cell shape analysis, input depth,
+% otherwise click enter/return
+depth = input('Please enter the depth in microns for aggregate job. Otherwise press enter.\n', 's');% little label at the end to indicated an aggregate sorting job
+dataPath = fullfile(origDataPath,[ts_label '_Kilosort' depth]);
 mkdir(dataPath)
 addpath(dataPath)
 %%
@@ -27,11 +30,13 @@ for i = 1:length(files)
     filearray = [filearray dir(char(files(i)))];
 end
 
-[~, idx] = sort({filearray.date});
-files = files(idx);
+if iscell(files)
+    [~, idx] = sort({filearray.date});
+    files = files(idx);
+end
+
 for i=1:length(files)
-    read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0)
-    
+    read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0);
     % only runs once
     if ~exist('a1', 'var')
         [b1, a1] = butter(3, 300/frequency_parameters.amplifier_sample_rate*2, 'high');
@@ -46,8 +51,11 @@ for i=1:length(files)
     datr = filter(b1, a1, datr);
     datr = flipud(datr);
     datr=datr';
-    fwrite(fid, datr(:),'int16'); % append to .dat file
+    fwrite(fid1a, datr(:),'int16'); % append to .dat file
     %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
+    if size(board_adc_data, 1) == 2
+        board_adc_data = [NaN(1, size(board_adc_data, 2)); board_adc_data];
+    end
     board_adc = [board_adc board_adc_data];
 end
 
@@ -80,7 +88,7 @@ clear amplifier_channels amplifier_data aux_input_channels aux_input_data ...
         t_amplifier t_aux_input t_dig t_supply_voltage
 %% Run Kilosort
 % copy master file example and  standard config and then edit them
-working_dir = 'C:\Users\danpo\Documents\MATLAB\DJP_KiloSort';
+working_dir = 'C:\Users\HealeyLab\Documents\DJP\KS-analysis';
 
 ChannelMapFile_orig      = fullfile(working_dir, 'createChannelMapFile.m');
 master_file_example_orig = fullfile(working_dir, 'master_file_example_MOVEME.m');
@@ -107,7 +115,8 @@ while ischar(tline)
 end
 fclose(fid3);
 % Change lines of .m file
-A{1}  = sprintf('ops.GPU=0');
+A{1}  = sprintf('ops.GPU=1;');
+A{2}  = sprintf('ops.parfor=1;');
 A{7}  = sprintf('ops.fbinary = ''%s'';', dataFileName); % dataFileName = 'C:\Users\danpo\Documents\sorting\mdx 10 8 18\filename'
 A{8}  = sprintf('ops.fproc = ''%s'';', fullfile(dataPath,'temp_wh.dat')); % dataPath = 'C:\Users\danpo\Documents\sorting\mdx 10 8 18\'
 A{9}  = sprintf('ops.root = ''%s'';',dataPath);
@@ -170,6 +179,8 @@ while ischar(tline)
 end
 fclose(fid5);
 % Change lines of .m file
+C{3} = sprintf('addpath(genpath(''C:\\KiloSort-master''))'); % path to LOCAL kilosort folder
+
 C{6} = sprintf('pathToYourConfigFile = ''%s''; ', dataPath);
 % C{24} = sprintf('rez = merge_posthoc2(rez);', dataPath);
 
@@ -190,4 +201,5 @@ fclose('all');
 run(ChannelMapFile_pasted)
 master_file_example_MOVEME
 beep
+pushBulletDriver(strjoin(['done at ', string(datetime)]));
 toc
