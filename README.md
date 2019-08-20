@@ -1,7 +1,20 @@
 # KS-analysis
-A MATLAB and Python framework for unpacking Kilosort/phy data, putting it into a database, and visualizing it.
+A MATLAB and Python framework for unpacking KiloSort/phy data, putting it into a database, and visualizing it.
 
 This small repo is intended to be used in conjunction with zeebie15's [ephysSuite](https://github.com/zeebie15/ephysSuite) repo, since it makes some assumptions about how your data is structured. See that repository for instructions for how to set up your rig to output the right data format.
+
+## Installation
+This comes with a few dependencies. Assuming you've successfully installed KiloSort and Phy, you'll also need to install the MATLAB engine for python. For that, you'll need another Python installation alongside the miniconda/Anaconda one you've got from Phy/KiloSort: 
+
+https://www.python.org/downloads/release/python-369/
+
+Follow the default install configuration. Then, you can invoke python 3.6 (the engine only supports 3.6, 3.5, and 2.7) while running your template-gui from 3.7+! To do so, open Anaconda prompt with Administrator priviledges and run `py -3.6 setup.py install`
+
+https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html
+
+By the way, to install other dependencies in this console, just type 
+
+``py -3.6 -m pip install <package>``
 
 ## Running Kilosort
 Kilosort seems to demand a lot of manual copy/pasting of entire files, and editing of parameters and such by hand. I tried to automate most of this in one script, which should take minimal editing to get running on your machine. Yes, this will involve hard-coding. It might occur to you that you could just hardcode the files directly instead of through this script. I prefer doing things through the script because it allows me to leverage the (more or less) original templates kilosort provides from one place, without changing the default shape of the template files.
