@@ -32,5 +32,5 @@ def export_best_channels(path):
 
 
 if __name__ == '__main__':
-    path = str(sys.argv[1])
+    path = r'D:\DJP thesis sorting\mda 8 13 19\mda 8 13 19 random thin spi_190813_163344_Kilosort1770' # str(sys.argv[1])
     export_best_channels(path)

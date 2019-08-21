@@ -35,6 +35,8 @@ NN = dbh.NN;
 %% 
 habit_arr = cell(length(dbh.wf_keys),2);
 latency_arr = cell(length(dbh.wf_keys),2);
+ns = 0;
+bs = 0;
 for i = 1:length(dbh.wf_keys)
     key = wf_keys{i};
 
@@ -55,56 +57,61 @@ for i = 1:length(dbh.wf_keys)
 %     plot(wf_mean-nanstd(wf')','LineWidth', 1.25, 'Color', color);  
 %     set(gca, 'XTick', [])
 %     title(['p2p: ' num2str(s.p2p) '            sym: ' num2str(s.sym)])
-%     saveas(fig, wf_filename, 'jpg')
+%     saveas(fig, wf_filename, 'svg')
 %     close(fig)
     %% habituation rate (evoked) (now in FR, minus baseline)
     if isfield(s, 'stim_timestamps')
-%         [on, off, wav_files] = dbh.get_stim_on_off(key);
-% 
-%         si = s.stim_identities{1};
-%         usi = unique(si);
-%         usi_leg = unique(si);
-%         for j = 1:length(usi_leg)
-%             edit = usi{j};
-%             edit = strsplit(edit, '\');
-%             edit = edit{end};
-%             edit = edit(1:end-4);
-%             usi_leg{j} = edit;
-%         end
-%         
-%         % for each class of stim:
-%         lat_arr = nan(length(usi),4); % latency to first spike for each stim onset
-%         fr_arr = nan(length(usi), 4); % will overlay response to each of four stims
-%         for j = 1:length(usi)
-%             stim_inds = find(strcmp(si,usi{j}));
-%             % for each stim itself
-%             for k = 1:length(stim_inds)
-%                 sp_ts = s.spike_timestamps;
-%                 ind = stim_inds(k);
-%                 evoked = length(intersect(...
-%                     sp_ts(sp_ts >= on(ind)),...
-%                     sp_ts(sp_ts < off(ind)))) / ((off(ind)-on(ind)) / s.amplifier_sampling_rate);                      
-%                 
-%                 baseline_length_samples = 3 * s.amplifier_sampling_rate;
-%                 baseline_length_buffer  = 1 * s.amplifier_sampling_rate;
-%                 
-%                 baseline = length(intersect(...
-%                     sp_ts(sp_ts >= (on(ind) - baseline_length_samples)),...
-%                     sp_ts(sp_ts < on(ind)-baseline_length_buffer))) / (3-1);
-%                 
-%                 fr_arr(j,k) = evoked - baseline; % now in FR!
-%                 % get latency now
-%                 all_greater = sp_ts(sp_ts >= on(ind));
-%                 next_greater = all_greater(1);
-%                 lat_arr(j,k) = (next_greater-on(ind))/s.amplifier_sampling_rate;
-%             end
-%         end
-%        % get legend ready
-%         habit_arr{i, 1} = fr_arr;
-%         habit_arr{i, 2} = s.p2p; 
-%         latency_arr{i,1} = lat_arr;
-%         latency_arr{i,2} = s.p2p;
-%         
+        if s.p2p >= 0.43
+            bs = bs + 1;
+        else
+            ns = ns + 1;
+        end
+        [on, off, wav_files] = dbh.get_stim_on_off(key);
+
+        si = s.stim_identities{1};
+        usi = unique(si);
+        usi_leg = unique(si);
+        for j = 1:length(usi_leg)
+            edit = usi{j};
+            edit = strsplit(edit, '\');
+            edit = edit{end};
+            edit = edit(1:end-4);
+            usi_leg{j} = edit;
+        end
+        
+        % for each class of stim:
+        lat_arr = nan(length(usi),4); % latency to first spike for each stim onset
+        fr_arr = nan(length(usi), 4); % will overlay response to each of four stims
+        for j = 1:length(usi)
+            stim_inds = find(strcmp(si,usi{j}));
+            % for each stim itself
+            for k = 1:length(stim_inds)
+                sp_ts = s.spike_timestamps;
+                ind = stim_inds(k);
+                evoked = length(intersect(...
+                    sp_ts(sp_ts >= on(ind)),...
+                    sp_ts(sp_ts < off(ind)))) / ((off(ind)-on(ind)) / s.amplifier_sampling_rate);                      
+                
+                baseline_length_samples = 3 * s.amplifier_sampling_rate;
+                baseline_length_buffer  = 1 * s.amplifier_sampling_rate;
+                
+                baseline = length(intersect(...
+                    sp_ts(sp_ts >= (on(ind) - baseline_length_samples)),...
+                    sp_ts(sp_ts < on(ind)-baseline_length_buffer))) / (3-1);
+                
+                fr_arr(j,k) = evoked - baseline; % now in FR!
+                % get latency now
+                all_greater = sp_ts(sp_ts >= on(ind));
+                next_greater = all_greater(1);
+                lat_arr(j,k) = (next_greater-on(ind))/s.amplifier_sampling_rate;
+            end
+        end
+       % get legend ready
+        habit_arr{i, 1} = fr_arr;
+        habit_arr{i, 2} = s.p2p; 
+        latency_arr{i,1} = lat_arr;
+        latency_arr{i,2} = s.p2p;
+        
 %         fig = figure('units','normalized','outerposition',[0 0 1 1]);
 %         plot(fr_arr', 'LineWidth', 1.25)
 %         legend(usi_leg)
@@ -123,12 +130,12 @@ for i = 1:length(dbh.wf_keys)
 %         %save
 %         ssa_filename = ['C:\Users\danpo\Documents\dbh_imgs\'...
 %                 key '_ssasub_' s.context];
-%         saveas(fig, ssa_filename, 'jpg')
+%         saveas(fig, ssa_filename, 'svg')
 %         close(fig)
     end
    
     %% psth
-    if isfield(s, 'stim_timestamps')
+    if 0%isfield(s, 'stim_timestamps')
         [on, off, wav_files] = dbh.get_stim_on_off(key);
 
         % for each class of stim:
@@ -175,115 +182,139 @@ for i = 1:length(dbh.wf_keys)
             xlim([0, (stop-start)/s.amplifier_sampling_rate])
             psth_filename = ['C:\Users\danpo\Documents\dbh_imgs\'...
                 key '_psth_' curr_wav.name(1:end-4) '_' s.context];
-            saveas(fig, psth_filename, 'jpg')
+            saveas(fig, psth_filename, 'svg')
 %             saveas(fig, [psth_filename '.pdf'])
             close(fig)
         end
     end
 end
-%  %% analyze habit_arr
-% habit_arr = habit_arr(~cellfun('isempty', habit_arr));
-% habit_arr = reshape(habit_arr, [length(habit_arr)/2,2]);
-% 
-% % First, beeswarm, taking average of whole set
-% ns = [];
-% bs = [];
-% for j = 1:length(habit_arr)
-%     if habit_arr{j,2} >= .43
-%         bs = [bs mean(mean(habit_arr{j,1}))];
-%     else
-%         ns = [ns mean(mean(habit_arr{j,1}))];
-%     end
-% end
-% f = figure;
-% plotSpread({bs, ns}, 'xNames', {'Broad','Narrow'},...
-%     'distributionColors', {BB, NN})
-% set(findall(f, 'type','line'),'markerSize',12)
-% ylabel('Evoked Firing Rate', 'FontSize', 20)
-% title('Overall evoked firing rate', 'FontSize', 20)
-% 
-% % next, beeswarm for each stimulus
-% ns = [];
-% bs = [];
-% for j = 1:length(habit_arr)
-%     ha = habit_arr{j,1};
-%     stims = nan(4,1);
-%     for k = 1:4
-%         if size(ha,1) >= k
-%             stims(k) = mean(mean(ha(k,:)));
-% %         else
-% %             stims(k) = nan;
-%         end
-%     end
-%     
-%     % bos bosrev con wn
-%     if habit_arr{j,2} >= .43
-%         bs = [bs; stims(1) stims(2) stims(3) stims(4)];
-%     else
-%         ns = [ns; stims(1) stims(2) stims(3) stims(4)];
-%     end
-% end
-% f = figure;
-% plotSpread({bs(:,1), ns(:,1), bs(:,2), ns(:,2), bs(:,3), ns(:,3), bs(:,4), ns(:,4)},...
-%     'xNames', {'BS BOS','NS BOS','BS BOS REV','NS BOS REV','BS CON','NS CON', 'BS WN','NS WN'},...
-%     'distributionColors', {BB, NN, BB, NN, BB, NN, BB, NN})
-% set(findall(f, 'type','line'),'markerSize',12);
-% ylabel('Evoked Firing Rate')
-% title('Evoked firing rate for each stimulus')
-% 
-% % finally, waterfall
-% bs = nan(4, 80, 88);
-% ns = bs; % smallen these last dimensions before generating graph
-% for j = 1:length(habit_arr)
-%     ha = habit_arr{j,1};
-%     % stims = nan(numstims, num_experiments, num_presentations_per_experiment)
-%     stims = nan(4,80);
-%     for k = 1:4
-%         if size(ha,1) >= k
-%             stims(k,:) = [ha(k,:) nan(1,80-size(ha,2))];
-%         end
-%     end
-%     
-%     % bos bosrev con wn
-%     if habit_arr{j,2} >= .43
-%         bs(:,:,j) = stims;
-%     else
-%         ns(:,:,j) = stims;
-%     end
-%     
-% end
-% 
-% figure;
-% title('Stimulus-specific adaptation curves')
-% usi_leg = {'BOS', 'BOS REV', 'CON', 'WN'};
-% for i = 1:4
-%     ns_curve = squeeze(ns(i,:,:));
-%     bs_curve = squeeze(bs(i,:,:));
-%     yl = max(max([ns_curve; bs_curve]));
-%     
-%     subplot(2,4,i)
-%     plot(bs_curve, 'Color', BB, 'LineWidth', 1); hold on
-%     plot(nanmean(bs_curve,2), 'Color', 'r', 'LineWidth', 1.2)
-% %     figure;waterfall(squeeze(ns(i,:,:))')
-%     title(usi_leg{i});
-%     if i == 1
-%     ylabel('Evoked Firing Rate')
-%     end
-%     xlim([1 50])
-%     ylim([1 yl])
-%         
-%     subplot(2,4,i+4)
-%     plot(ns_curve, 'Color', NN, 'LineWidth', 1); hold on
-% 	plot(nanmean(ns_curve,2), 'Color', 'k', 'LineWidth', 1.2)
-% %     figure;waterfall(squeeze(bs(i,:,:))')
-%     title(usi_leg{i});
-%     xlabel('Stimulus presentation')
-%     if i == 1
-%     ylabel('Evoked Firing Rate')
-%     end
-%     xlim([1 50])
-%     ylim([1 yl])
-% end
+ %% analyze habit_arr
+habit_arr = habit_arr(~cellfun('isempty', habit_arr));
+habit_arr = reshape(habit_arr, [length(habit_arr)/2,2]);
+
+% First, beeswarm, taking average of whole set
+ns = [];
+bs = [];
+for j = 1:length(habit_arr)
+    if habit_arr{j,2} >= .43
+        bs = [bs mean(mean(habit_arr{j,1}))];
+    else
+        ns = [ns mean(mean(habit_arr{j,1}))];
+    end
+end
+f = figure;
+plotSpread({bs, ns}, 'xNames', {'Broad','Narrow'},...
+    'distributionColors', {BB, NN})
+set(findall(f, 'type','line'),'markerSize',20)
+ylabel('Evoked Firing Rate', 'FontSize', 20)
+title('Overall evoked firing rate', 'FontSize', 20)
+[h,p] = ttest2(bs, ns);
+sigstr = '';
+if p<0.001
+    sigstr = '***';
+elseif p<0.01
+    sigstr = '**';
+elseif p<0.05
+    sigstr = '*';
+end
+text(1.25, 27, sigstr, 'FontSize', 28)
+
+% next, beeswarm for each stimulus
+ns = [];
+bs = [];
+for j = 1:length(habit_arr)
+    ha = habit_arr{j,1};
+    stims = nan(4,1);
+    for k = 1:4
+        if size(ha,1) >= k
+            stims(k) = mean(mean(ha(k,:)));
+%         else
+%             stims(k) = nan;
+        end
+    end
+    
+    % bos bosrev con wn
+    if habit_arr{j,2} >= .43
+        bs = [bs; stims(1) stims(2) stims(3) stims(4)];
+    else
+        ns = [ns; stims(1) stims(2) stims(3) stims(4)];
+    end
+end
+f = figure;
+plotSpread({bs(:,1), ns(:,1), bs(:,2), ns(:,2), bs(:,3), ns(:,3), bs(:,4), ns(:,4)},...
+    'xNames', {'BS BOS','NS BOS','BS BOS REV','NS BOS REV','BS CON','NS CON', 'BS WN','NS WN'},...
+    'distributionColors', {BB, NN, BB, NN, BB, NN, BB, NN})
+set(findall(f, 'type','line'),'markerSize',12);
+ylabel('Evoked Firing Rate')
+title('Evoked firing rate for each stimulus')
+% t-test show
+for j = 1:4
+    [~,p,~,stats]=ttest2(ns(:,j), bs(:,j))
+    sigstr = '';
+    if p<0.001
+        sigstr = '***';
+    elseif p<0.01
+        sigstr = '**';
+    elseif p<0.05
+        sigstr = '*';
+    end
+    text(2*j-0.75,35,sigstr, 'FontSize', 28)
+%         text(2*j-0.5,45,['p=' num2str(p)])
+end
+
+% finally, waterfall
+bs = nan(4, 80, 88);
+ns = bs; % smallen these last dimensions before generating graph
+for j = 1:length(habit_arr)
+    ha = habit_arr{j,1};
+    % stims = nan(numstims, num_experiments, num_presentations_per_experiment)
+    stims = nan(4,80);
+    for k = 1:4
+        if size(ha,1) >= k
+            stims(k,:) = [ha(k,:) nan(1,80-size(ha,2))];
+        end
+    end
+    
+    % bos bosrev con wn
+    if habit_arr{j,2} >= .43
+        bs(:,:,j) = stims;
+    else
+        ns(:,:,j) = stims;
+    end
+    
+end
+
+figure;
+title('Stimulus-specific adaptation curves')
+usi_leg = {'BOS', 'BOS REV', 'CON', 'WN'};
+for i = 1:4
+    ns_curve = squeeze(ns(i,:,:));
+    bs_curve = squeeze(bs(i,:,:));
+    yl = max(max([ns_curve; bs_curve]));
+    
+    subplot(2,4,i)
+    plot(bs_curve, 'Color', BB, 'LineWidth', 1); hold on
+    plot(nanmean(bs_curve,2), 'Color', 'r', 'LineWidth', 1.2)
+%     figure;waterfall(squeeze(ns(i,:,:))')
+    title(usi_leg{i});
+    if i == 1
+    ylabel('Evoked Firing Rate')
+    end
+    xlim([1 50])
+    ylim([1 yl])
+        
+    subplot(2,4,i+4)
+    plot(ns_curve, 'Color', NN, 'LineWidth', 1); hold on
+	plot(nanmean(ns_curve,2), 'Color', 'k', 'LineWidth', 1.2)
+%     figure;waterfall(squeeze(bs(i,:,:))')
+    title(usi_leg{i});
+    xlabel('Stimulus presentation')
+    if i == 1
+    ylabel('Evoked Firing Rate')
+    end
+    xlim([1 50])
+    ylim([1 yl])
+end
 %% Latency analysis
 latency_arr = latency_arr(~cellfun('isempty', latency_arr));
 latency_arr = reshape(latency_arr, [length(latency_arr)/2,2]);
@@ -354,7 +385,8 @@ set(findall(f, 'type','line'),'markerSize',15);
 ylabel('First spike latency (s)', 'FontSize', 18)
 ylim([0 1.2])
 title('First spike latency for each stimulus', 'FontSize', 18)
-
+% independent t-test:
+% [h,p]=ttest2(bs(:,1), ns(:,1))
 %%
 % [BBavg, NNavg, BNavg, NBavg] = dbh.cross_correlograms;
 %

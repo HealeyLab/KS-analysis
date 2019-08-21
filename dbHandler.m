@@ -33,7 +33,7 @@ classdef dbHandler
         
         BB = [0 63 92] / 255;
         BN = [87 82 126] / 255; 
-        NB= [157 99 136] / 255;
+        NB = [157 99 136] / 255;
         NN = [209 127 127] / 255;
     end
     methods 
@@ -67,7 +67,6 @@ classdef dbHandler
             
         
         %% Remove all entries with match to key
-
         function remove(obj, key_family)
             key_family = strsplit(key_family, '&');
             key_family = key_family{1};
@@ -151,6 +150,7 @@ classdef dbHandler
 
             %scatter w depth
             figure;
+            plotSpread(vec(:,4))
             scatter(vec(:,1), vec(:,4), 'filled','k', 'jitter', 'on', 'jitterAmount', 0.01)
             xlabel('peak to peak width (ms)')
             ylabel('depth (um)')
@@ -199,7 +199,133 @@ classdef dbHandler
             disp(obj.db.keys')
         end
         
+        function [tet_cells] = filter_tet_cells(obj, tet_cells)
+            % removes tet_cells with certain criteria, such as having a low
+            % evoked firing rate
+            % convert to keys, then to arraylist, then to iterator
+            db = obj.db;
+%             jList = java.util.ArrayList;jList.add(tet_cells);jList = jList.get(0);it = jList.iterator;
+            i = 1;
+            while i <= size(tet_cells,1) %for i = 1:length(tet_cells)
+                key_i = tet_cells(i,:);
+                key = obj.keyhash(key_i{1}, key_i{2}, key_i{3}, key_i{4});
+                s = db(key);
+                
+                if isfield(s, 'stim_timestamps')
+                    [on, off, wav_files] = obj.get_stim_on_off(key);
+
+                    si = s.stim_identities{1};
+                    usi = unique(si);
+                    usi_leg = unique(si);
+                    for j = 1:length(usi_leg)
+                        edit = usi{j}; edit = strsplit(edit, '\');
+                        edit = edit{end}; edit = edit(1:end-4);
+                        usi_leg{j} = edit;
+                    end
+
+                    fr = 0;
+                    % for each class of stim:
+                    fr_arr = []; % will overlay response to each of four stims
+                    for j = 1:length(usi)
+                        stim_inds = find(strcmp(si,usi{j}));
+                        % for each stim itself
+                        for k = 1:length(stim_inds)
+                            sp_ts = s.spike_timestamps;
+                            ind = stim_inds(k);
+                            evoked = length(intersect(...
+                                sp_ts(sp_ts >= on(ind)),...
+                                sp_ts(sp_ts < off(ind)))) / ((off(ind)-on(ind)) / s.amplifier_sampling_rate);                      
+
+                            baseline_length_samples = 3 * s.amplifier_sampling_rate;
+                            baseline_length_buffer  = 1 * s.amplifier_sampling_rate;
+
+                            baseline = length(intersect(...
+                                sp_ts(sp_ts >= (on(ind) - baseline_length_samples)),...
+                                sp_ts(sp_ts < on(ind)-baseline_length_buffer))) / (3-1);
+                            fr = (evoked - baseline);
+                            fr_arr = [fr_arr fr];
+                        end
+                    end
+                    if  mean(fr_arr) < 2 % now in FR!
+                        tet_cells(i,:) = [];
+                        i = i - 1;
+                    end
+                end
+            i = i + 1;    
+            end
+        end
         
+        
+        function latency_map = tetrode_latency(obj)
+            % First, separate all keys into 
+            keys = obj.db.keys;
+            db = obj.db;
+            keycell = cell(length(keys), 4 ); % rows, columns
+            
+            latency_map = containers.Map('KeyType','char','ValueType', 'any');
+            
+            for i = 1:length(keys)
+                % will this present an issue because of unused cell indices
+                if isfield(db(keys{i}), 'stim_timestamps')
+                    [folder, unit, channel, goodness] = obj.dehash(keys{i});
+                    keycell{i,1} = folder; keycell{i,2} = unit;
+                    keycell{i,3} = channel; keycell{i,4} = goodness;
+                end
+            end
+            
+            keycell = keycell.';
+            keycell = reshape(keycell(~cellfun(@isempty,keycell)),4,[])';
+            uniquecell = unique(keycell(:,1));
+            
+            % for each cell, for each recording, for each tetrode...
+            for i = 1:length(uniquecell)
+                % find cells from same recording
+                recording_indices = find(strcmp(uniquecell{i},keycell(:,1)));
+                % find cells from same tetrode
+                recording_cells = keycell(recording_indices,:); % cells from same recording
+
+                for j = 1:4
+                    high = j * 4;
+                    low = high - 3;
+
+                    bs = [];
+                    ns = [];
+                    curr_s = struct('bs', bs, 'ns', ns);
+
+
+                    % for each tetrode, see if there are shared cells
+                    tetrode_cells = recording_cells(...
+                        cellfun(@str2num, recording_cells(:,3)) >= low &...
+                        cellfun(@str2num, recording_cells(:,3)) <= high,:);
+
+                    for k = 1:size(tetrode_cells,1) % check that this is the right dimension
+                        key_i = tetrode_cells(k,:);
+                        key_i = obj.keyhash(key_i{1}, key_i{2}, key_i{3}, key_i{4});
+                        [on, ~, ~] = obj.get_stim_on_off(key_i);
+                        s_i = db(key_i);
+                        sp_ts = s_i.spike_timestamps;
+                        
+                        si = s.stim_identities{1};
+                        usi = unique(si);   
+                        for l = 1:length(usi)
+                            % TODO: add shape for all stimuli
+                            all_greater = sp_ts(sp_ts >= on(ind));
+                            next_greater = all_greater(1);
+
+                            if s_i.p2p >= 0.43
+                                bs = [bs; (next_greater-on(ind))/s.amplifier_sampling_rate];
+                            else
+                                ns = [ns; (next_greater-on(ind))/s.amplifier_sampling_rate];
+                            end
+
+                            curr_s.bs = bs;
+                            curr_s.ns = ns;
+                            latency_map(key_i) = curr_s;
+                        end
+                    end
+                end
+            end
+        end
             
         function [BBavg, NNavg, BNavg, NBavg] = cross_correlograms(obj)
             % First, separate all keys into 
@@ -233,12 +359,12 @@ classdef dbHandler
                     
                     if size(tetrode_cells,1) > 1
                         xcorr_filename = ['C:\Users\danpo\Documents\dbh_imgs\'...
-                            uniquecell{i} '_tetrode' num2str(floor(low/4) + 1) '_xcorr.png']; % previously saved as jpg, but now I need high quality stuff 
+                            uniquecell{i} '_tetrode' num2str(floor(low/4) + 1) '_xcorr_filtered.png']; % previously saved as jpg, but now I need high quality stuff 
                         
                         [fig, tosave,...
                         BBavg,NNavg,BNavg,NBavg] = obj.cross_corr_helper(tetrode_cells,...
                         BBavg,NNavg,BNavg,NBavg);
-                        
+                        tosave = 0;
                         if tosave
                             saveas(fig, xcorr_filename)
                             disp(xcorr_filename)
@@ -291,6 +417,9 @@ classdef dbHandler
             fig = figure('units','normalized','outerposition',[0 0 1 1]);
             hold on;
             
+            tet_cells = obj.filter_tet_cells(tet_cells);
+            tosave = 0;
+            
             for i = 1:size(tet_cells,1)
                 key_i = tet_cells(i,:);
                 s_i = db(obj.keyhash(key_i{1}, key_i{2}, key_i{3}, key_i{4}));
@@ -303,9 +432,9 @@ classdef dbHandler
                     [tsOffsets, ~, ~] = crosscorrelogram(...
                         s_i.spike_timestamps / 1000, s_j.spike_timestamps / 1000, [-0.100 0.100]);
                     
-                    subplot(length(tet_cells)-1,length(tet_cells)-1,...
-                        (i-1) * length(tet_cells) + j)   
-                    h = histogram(tsOffsets, 100);
+%                     subplot(length(tet_cells),length(tet_cells),...
+%                         (i-1) * length(tet_cells) + j)   
+%                     h = histogram(tsOffsets, 100);
                     
                     % set color                    
                     BB = obj.BB; NN = obj.NN;
@@ -397,6 +526,12 @@ classdef dbHandler
             if has_stim_markers
                 [stim_timestamps, stim_identities, adc_sr] = obj.extract_stim_timestamps(pwd);
             end
+            
+            % Get Waveforms
+            if isempty(dir('raw_filtered.dat'))
+                % Prerec for extracting waveforms
+                obj.filter_raw_data()
+            end
             [spike_waveform_info, spike_timestamps, sp] = obj.getWaveFormsDriver();
             
             % get depth
@@ -415,6 +550,8 @@ classdef dbHandler
                 hemisphere = 'L';
             elseif contains(workingDirectory, 'mdx')
                 hemisphere = 'R';
+            elseif contains(workingDirectory, 'mda')
+                hemisphere = 'L';
             else
                 hemisphere = '';
                 while ~(strcmp(hemisphere, 'mdy') || strcmp(hemisphere, 'mdx'))
@@ -425,7 +562,7 @@ classdef dbHandler
             % use this recording for waveform analysis?
             yn = '';
             while ~strcmp(yn, 'y') && ~strcmp(yn, 'n')
-                yn = input('Should this recording be used for waveform analysis? y/n\n', 's');
+                yn = input('Should this recording be used for broad/narrow waveform analysis? y/n\n', 's');
                 if yn == 'y'
                     for_wf_analysis = 1;
                 elseif yn == 'n'
@@ -449,23 +586,32 @@ classdef dbHandler
                 s.channel = spike_waveform_info(i).channel;
                 s.folder = workingDirectory; % encapsulates day and such
                 s.goodness = spike_waveform_info(i).goodness; % 'MUA' or 'good'
-                 
+                
                 % need each unit's timestamps, not all of them
                 s.spike_timestamps = spike_timestamps(sp.clu == spike_waveform_info(i).unit);
                 s.amplifier_sampling_rate = sp.sample_rate;
+                
                 % actual waveform storage
                 s.spike_waveforms = spike_waveform_info(i).waveform;
                 s.for_wf_analysis = for_wf_analysis;
-                % complicated ones
+                
+                % misc. info
                 s.depth = depth;
                 s.context = context;
                 s.hemisphere = hemisphere;
+                
                 % adc stuff
                 if has_stim_markers
                     s.stim_timestamps = stim_timestamps;
                     s.stim_identities = stim_identities;
-                    s.adc_sampling_rate = adc_sr;
                 end
+                s.adc_sampling_rate = adc_sr;
+                
+                % for microphone trace
+                stim_data_path = fullfile(workingDirectory, 'adc_data.mat');
+                S = load(stim_data_path); % S.board_adc, S.adc_sr
+                s.microphone = S.board_adc(3,:);
+                
                 % when was this added?
                 s.whenadded = datetime;
                 obj.db(key) = s;
@@ -500,9 +646,44 @@ classdef dbHandler
             %%
             input('when you run the export best channels script, click enter')
             %%
-            cluster_quality = readtable('cluster_groups.csv');
-            best_channels   = readtable('best_channels.csv');
-            good_clusters = cluster_quality(strcmp(cluster_quality.group, 'good'),1);
+            % CLUSTER GROUP DATA
+            if ~isempty(dir('cluster_groups.csv'))
+                cluster_quality = readtable('cluster_groups.csv');
+            else
+                cluster_quality_s = tdfread('cluster_group.tsv', '\t');
+                
+                Cluster_id = cluster_quality_s.cluster_id;
+                % have to put this into a cell array so it's converted to table properly
+                group = cell(length(cluster_quality_s.group),1);
+                for j=1:length(cluster_quality_s.group)
+                    g = cluster_quality_s.group(j,:);
+                    % remove spaces
+                    g(strfind(g,' ')) = [];
+                    group{j} = g;
+                end
+                
+                cluster_quality = table(Cluster_id, group);
+            end
+            
+            % BEST CHANNEL DATA
+            if ~isempty(dir('best_channels.csv'))
+                best_channels = readtable('best_channels.csv'); % REPLACE THIS
+            elseif ~isempty(dir('.phy\memcache\phycontrib.template.gui.get_best_channel.pkl'))
+                best_chan_pkl = fullfile(pwd, '.phy\memcache\phycontrib.template.gui.get_best_channel.pkl');
+                [~, result] = system(sprintf('py -3.6 C:\\Users\\danpo\\Documents\\MATLAB\\DJP_Kilosort\\KS-analysis\\unpack_pkl.py "%s"', best_chan_pkl));
+                
+                result(strfind(result, ']'))=[];
+                result(strfind(result, '['))=[];
+                result = sscanf(result, '%f');
+                
+                Cluster_id = result(1:floor(end/2));
+                Best_channel = result(ceil(end/2)+1:end);
+                best_channels = table(Cluster_id, Best_channel);
+            else
+                error('no bestchannel data')
+            end
+            
+            good_clusters = cluster_quality(strcmp(cluster_quality.group, 'good'),1); % all(cluster_quality.group=='good ', 2); %
             MUA_clusters  = cluster_quality(strcmp(cluster_quality.group, 'mua'),1);
             good_clusters = table2array(good_clusters);
             MUA_clusters  = table2array(MUA_clusters);
@@ -746,7 +927,24 @@ classdef dbHandler
             cleaned_vec = vec;
         end
         
+        function output = get_audio(~, aPath)
+            wav_files = dir([aPath '\*.wav']);
+            numfiles = length(wav_files);
+            output = struct('wav', cell(numfiles,1),...
+                'fs', cell(numfiles,1),...
+                'name', cell(numfiles,1));
+            for i = 1:numfiles
+                [cur_wav, fs] = audioread(fullfile(wav_files(i).folder,...
+                    wav_files(i).name));
+                
+                output(i).wav = cur_wav(:,1);
+                output(i).fs = fs;
+                output(i).name = wav_files(i).name;
+            end
+        end
+        
         function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, curr_dir)
+            
         %     Logic:
         %     1. Load wav files, text files and audio adc files
         %     2. Downsample them to match the recording SR
@@ -793,18 +991,17 @@ classdef dbHandler
                 error('mismatch in number of stim onset and offset times')
             end
             %% 2
-            disp('reading audio file')
-
-            wav_files = dir([audioPath '\*.wav']);
-            for i = 1:length(wav_files)
-                [cur_wav, fs] = audioread(fullfile(wav_files(i).folder,...
-                    wav_files(i).name));
-                cur_wav_resampled = resample(cur_wav, S.adc_sr, fs);
+            disp('reading audio file')            
+            wav_files=obj.get_audio(audioPath);
+            for i=1:length(wav_files)
+                cur_wav=wav_files(i).wav;
+                cur_fs = wav_files(i).fs;
+                cur_wav_resampled = resample(cur_wav, S.adc_sr, cur_fs);
                 cur_wav_resampled =  filter(b1, a1, cur_wav_resampled);
-
-                wav_files(i).data = cur_wav_resampled(:,1);             
+                
+                wav_files(i).wav = cur_wav_resampled;
             end
-            
+
 %             timestamps = over;
 %             hold on;
 %             plot(S.board_adc(2,:))
@@ -818,7 +1015,7 @@ classdef dbHandler
 %               plot(under(i), 1 ,'r*')
 %               plot(under(i)-length(s.data), 1 ,'r*')
                 disp(['Cross correlating Stimulus ' int2str(i)])
-                [co, lag] = xcorr(norm_adc_audio(over(i):under(i)), s.data);
+                [co, lag] = xcorr(norm_adc_audio(over(i):under(i)), s.wav);
                 [~,I] = max((co));
                 lagDiff = lag(I);
 %                 hold on;
