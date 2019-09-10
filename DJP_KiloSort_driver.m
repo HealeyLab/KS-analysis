@@ -23,7 +23,7 @@ dataFileName = fullfile(dataPath, 'raw_filtered.dat'); % [dataPath '\Kilosort_al
 % saving adc data, too
 board_adc = [];
 % open raw.dat to write
-fid = fopen(dataFileName, 'w'); % open .dat file for writing
+fid1a = fopen(dataFileName, 'w'); % open .dat file for writing
 
 filearray = [];
 for i = 1:length(files)
@@ -202,6 +202,6 @@ fclose('all');
 run(ChannelMapFile_pasted)
 master_file_example_MOVEME
 beep
-pushBulletDriver(strjoin(['done at ', string(datetime)]));
+pushBulletDriver(strjoin(['done sorting ' pwd]));% at ', string(datetime)]));
 toc
 
