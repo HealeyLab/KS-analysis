@@ -51,7 +51,7 @@ classdef dbHandler
                 end
             end
         end
-        
+        %%
         function get_song_activity(obj)
             % NOTE: to go fast, toggle the fields with the TAB key.
             % add components
@@ -95,65 +95,74 @@ classdef dbHandler
                 hs.save = uicontrol(hs.fig,...
                     'Units', 'Normalized', 'Style', 'pushbutton',...
                     'Position',[0.9 0.01 0.05  0.04],...
-                    'String','Save','Callback', @save,...
-                    'Tag', 'save');        
+                    'String','Show','Callback', @show,...
+                    'Tag', 'show');        
 
                 %         [from_left from_bottom width height]
 
-                hs.SpectroWindow = axes('Units','Normalized', 'Position', [0.04 0.35 0.95 0.75]);
-                hs.SpWindow = axes('Units','Normalized', 'Position', [0.04 0.15 0.95 0.15]);
+                hs.sa = axes('Units','Normalized', 'Position', [0.04 0.45 0.95 0.50]);
+                hs.ra = axes('Units','Normalized', 'Position', [0.04 0.15 0.95 0.25]);
             end
 
-            function save(~, ~)
-                function vlines(t)
-                    if i == 1
-                        col = 'y';
-                    elseif i == 2
-                        col = 'k';
-                    elseif i == 3
-                        col = 'b';
-                    else
-                        col = 'r';
-                    end
-                    
-                    line([floor(t),floor(t)],[0, 1000], 'Color', col, 'LineWidth', 1);
+            function show(~, ~)
+                % shows on multiple lines
+                function rasterRow(tStamps, i, color)
+                    axes(hs.ra);
+                    line([floor(tStamps),floor(tStamps)], [i, i+1], 'Color', color);
                 end
                 
-                cla(hs.SpWindow);
+                % clear the raster
+                cla(hs.ra);
                 
                 OpenUD = hs.open.UserData;
                 keys = OpenUD.keys;
-                for i = 1:length(OpenUD)
+                
+                % for each cell
+                numUnits = length(OpenUD);
+                for i = 1:numUnits
                     hold on;
                     key = OpenUD(i).keys;
                     entry = obj.db(key);
 
                     % get the time limits in samples
                     aFs = entry.amplifier_sampling_rate;
-                    axes(hs.SpectroWindow);
-                    xl = xlim * 60 * aFs;
-                    axes(hs.SpWindow);
                     
+                    % adjust xlim
+                    axes(hs.sa); SpectXlim = xlim * 60 * aFs; % right into amplifier sampling rate
+                    axes(hs.ra); xlim(SpectXlim)
+                    
+                    % filter timestamps
                     sTs = entry.spike_timestamps; % query value
-                    sTs = sTs(sTs > xl(1) & sTs < xl(2)); % only get within this window
-                    sTs = sTs; % - xl(1); % normalize to the beginning of the thing
+                    sTs = sTs(sTs > SpectXlim(1) & sTs < SpectXlim(2)); % only get within this window
 
+                    % plot the timestamps
                     for j = 1:length(sTs)
-                        vlines(sTs(j))
+                        rasterRow(sTs(j), i, 'k');
                     end
                 end
-%                 Fs = OpenUD.Fs;
-%                 board_adc = OpenUD.board_adc;                
-%                 xl = xlim * 60 * Fs; % to audio samples
-%                 y = board_adc(end, xl(1):xl(2));
-%                 y = y-mean(y);
-%                 plot(y)
-%                 audiowrite('BOS.wav', y, Fs); 
-            end
 
+                % labels
+                yticks([1:numUnits]+.5)
+                yticklabels([1:numUnits])
+                ylabel('Unit')
+                xlabel('time (s)');
+                axes(hs.ra)
+                prettyAxes(hs.ra, 12);
+                
+                axes(hs.sa);
+                xlabel('')
+                prettyAxes(hs.sa, 12);
+                
+                
+            end
+            function prettyAxes(axis, fontSize)
+                axis.YAxis.FontSize = fontSize;
+                axis.XAxis.FontSize = fontSize;
+            end
+                
+                
             function open(hObject, ~)
                 % remove all keys not in key family
-
                 keyOrig = input('gimme da key');
                 key_fam = strsplit(keyOrig, '&');
                 key_fam = key_fam{1};
@@ -181,12 +190,14 @@ classdef dbHandler
                 adc_sr = entry.adc_sampling_rate;
                 hObject.UserData = struct('board_adc', mic, 'Fs', adc_sr, 'keys', keys); % frequency_parameters.board_adc_sample_rate
                 
-                axes(hs.SpectroWindow);
+                axes(hs.sa);
                 spectrogram( mic(end,:), 256, [],[], adc_sr, 'yaxis')
                 colorbar('delete');
+                
+                
             end
         end
-        
+        %%
         % Make a key for the Map to point to the unit info
         function key = keyhash(~, workingDirectory, unit, channel, goodness)
             label = split(workingDirectory, '\');
