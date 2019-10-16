@@ -2,7 +2,7 @@ function ap = get_audioPath(obj, workingDirectory)
     audioPaths = obj.audioPaths;
     
     % simplify audiopaths to just 'md_'
-    for i=1:length(audiopaths)
+    for i=1:length(obj.audioPaths)
         path = audioPaths{i};
         parts = split(path);
         mdBlank = parts{end}; % md_
@@ -12,7 +12,7 @@ function ap = get_audioPath(obj, workingDirectory)
         end
     end
     
-    if ~exists(ap)
+    if ~exist('ap', 'var')
         throw("no audiopaths matched")
     end
 end

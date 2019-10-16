@@ -30,7 +30,7 @@ end
 [~, idx] = sort({filearray.date});
 files = files(idx);
 for i=1:length(files)
-    read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0);
+    read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,files{i}),0);
 %     
 %     % only runs once
 %     if ~exist('a1', 'var')

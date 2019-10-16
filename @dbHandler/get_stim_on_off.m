@@ -1,6 +1,6 @@
 function [on, off, wav_files] = get_stim_on_off(obj,key)
     s = obj.db(key);
-    audioPath = get_audioPath(s.folder);
+    audioPath = obj.get_audioPath(s.folder);
 
     wav_files = dir([audioPath '\*.wav']);
     for i = 1:length(wav_files)
@@ -16,7 +16,12 @@ function [on, off, wav_files] = get_stim_on_off(obj,key)
     for i = 1:length(s.stim_timestamps)
         curr_wav_path = split(s.stim_identities{1}{i},'\');
         curr_wav_name = curr_wav_path{end};
-        len = length(wav_files(strcmp({wav_files.name},curr_wav_name)).data);
+        index = strcmp({wav_files.name},curr_wav_name); % for the non-tone stimuli
+        if any(index)
+            len = length(wav_files(index).data);
+        else
+            len = length(tones(200, 1, 30e3));
+        end
         on(i) = s.stim_timestamps(i); 
         off(i)= s.stim_timestamps(i) + len;
     end

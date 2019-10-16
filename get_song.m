@@ -63,7 +63,8 @@ function get_song
         OpenUD = hs.open.UserData;
         Fs = OpenUD.Fs;
         board_adc = OpenUD.board_adc;
-        xl = xlim * 60 * Fs;
+        adjust = OpenUD.adjust;
+        xl = xlim * Fs * 60;
         y = board_adc(end, xl(1):xl(2));
         y = y-mean(y);
         plot(y)
@@ -72,34 +73,35 @@ function get_song
 
     function open(hObject, ~)
         [files, origDataPath] = ... % crucial distinction: files vs file (current)
-            uigetfile('Select an RHD2000 Data File', 'MultiSelect', 'on');
+            uigetfile('*.rhd', 'Select an RHD2000 Data File', 'MultiSelect', 'on');
 
-%         board_adc = [];
-%         if ismatrix(files) && ~iscell(files)
-%             % if is one file
-%             [~, frequency_parameters, board_adc_data] = read_Intan_RHD2000_file_MML_DJP(fullfile(origDataPath,files),0);
-%             board_adc = [board_adc board_adc_data];
-%         else
-%             % if is two+ files
-%             filearray = [];
-%             for i = 1:length(files)
-%                 name = char(files(i));
-%                 path = fullfile(origDataPath, name);
-%                 filearray = [filearray dir(path)];
-%             end
-% 
-%             [~, idx] = sort({filearray.date});
-%             files = files(idx);
-% 
-%             for i=1:length(files)
-%                 [~, frequency_parameters, board_adc_data] = read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0);
-%                 board_adc = [board_adc board_adc_data];
-%             end
-%         end
-        S = load(fullfile(origDataPath,'adc_data.mat'));
-        hObject.UserData = struct('board_adc', S.board_adc, 'Fs', S.adc_sr); % frequency_parameters.board_adc_sample_rate
+        board_adc = [];
+        if ismatrix(files) && ~iscell(files)
+            % if is one file
+            [~, frequency_parameters, board_adc_data] = read_Intan_RHD2000_file_MML_DJP(fullfile(origDataPath,files),0);
+            board_adc = [board_adc board_adc_data];
+        else
+            % if is two+ files
+            filearray = [];
+            for i = 1:length(files)
+                name = char(files(i));
+                path = fullfile(origDataPath, name);
+                filearray = [filearray dir(path)];
+            end
+
+            [~, idx] = sort({filearray.date});
+            files = files(idx);
+            
+            for i=1:length(files)
+                [~, frequency_parameters, board_adc_data] = read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,...
+                    filearray(i).name),0);
+                board_adc = [board_adc board_adc_data];
+            end
+        end
+%         S = load(fullfile(origDataPath,'adc_data.mat'));
+        hObject.UserData = struct('board_adc', board_adc, 'Fs', frequency_parameters.board_adc_sample_rate); % 
         
-        spectrogram(S.board_adc(end,:), 256, [],[], S.adc_sr, 'yaxis')
+        spectrogram(board_adc(end,:), 256, [],[], frequency_parameters.board_adc_sample_rate, 'yaxis')
         colorbar('delete');
     end
 end

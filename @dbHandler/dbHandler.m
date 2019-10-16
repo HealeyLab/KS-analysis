@@ -22,12 +22,15 @@
 
 classdef dbHandler
     properties
-        dbPath = 'C:\Users\danpo\Documents\db_backup.mat';%'E:\DJP thesis sorting\db.mat';
+        dbPath = 'C:\Users\danpo\Documents\db.mat';%'E:\DJP thesis sorting\db.mat';
         audioPaths = {...
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdx',...
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdy',...
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mda',...
-            'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdb'};
+            'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdb',...
+            'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdc',...
+            'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdd',...
+            'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mde'};
         
         db = containers.Map; % initialized as none, basically
         count = 0;
@@ -162,8 +165,8 @@ classdef dbHandler
                 
                 
             function open(hObject, ~)
-                % remove all keys not in key family
-                keyOrig = input('gimme da key');
+                % remove all keys not in key family                keyOrig = input('gimme da key');
+                keyOrig = input('gimme da key','s');
                 key_fam = strsplit(keyOrig, '&');
                 key_fam = key_fam{1};
 
@@ -256,24 +259,22 @@ classdef dbHandler
             % get context
             context = '';
             while ~(strcmp(context, 'habituation') || strcmp(context, 'random')...
-                    || strcmp(context, 'other')...
-                    || strcmp(context, 't1') || strcmp(context, 't2')...
-                    || strcmp(context, 't2') || strcmp(context, 't4'))
-                context = input('habituation, random, or t1/t2/t3/t4, or other?\n','s');
+                    || strcmp(context, 'song') || strcmp(context, 'other'))
+                context = input('habituation, random, song, or other?\n','s');
             end
             
             % get hemisphere
-            if contains(workingDirectory, 'mdy')
-                hemisphere = 'L';
-            elseif contains(workingDirectory, 'mdx')
+            if contains(workingDirectory, 'mdx')...
+                    || contains(workingDirectory, 'mde')
                 hemisphere = 'R';
-            elseif contains(workingDirectory, 'mda')
+            elseif contains(workingDirectory, 'mdy') ...
+                    || contains(workingDirectory, 'mda')...
+                    || contains(workingDirectory, 'mdb')...
+                    || contains(workingDirectory, 'mdc')...
+                    || contains(workingDirectory, 'mdd')
                 hemisphere = 'L';
             else
-                hemisphere = '';
-                while ~(strcmp(hemisphere, 'mdy') || strcmp(hemisphere, 'mdx'))
-                    hemisphere = input('which hemisphere? (L/R)\n');
-                end 
+                error('This subject is not listed as having a hemisphere')
             end
             
             % use this recording for waveform analysis?

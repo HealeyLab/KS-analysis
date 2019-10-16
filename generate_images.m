@@ -65,7 +65,7 @@ for i = 1:length(dbh.wf_keys)
             bs = bs + 1;
         else
             ns = ns + 1;
-        end
+        end 
         [on, off, wav_files] = dbh.get_stim_on_off(key);
 
         si = s.stim_identities{1};
@@ -135,7 +135,7 @@ for i = 1:length(dbh.wf_keys)
     end
    
     %% psth
-    if 0%isfield(s, 'stim_timestamps')
+    if 0 %isfield(s, 'stim_timestamps')
         [on, off, wav_files] = dbh.get_stim_on_off(key);
 
         % for each class of stim:
@@ -309,9 +309,11 @@ for i = 1:4
 %     figure;waterfall(squeeze(bs(i,:,:))')
     title(usi_leg{i});
     xlabel('Stimulus presentation')
+    
     if i == 1
-    ylabel('Evoked Firing Rate')
+        ylabel('Evoked Firing Rate')
     end
+    
     xlim([1 50])
     ylim([1 yl])
 end
