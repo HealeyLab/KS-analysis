@@ -55,150 +55,30 @@ classdef dbHandler
             end
         end
         %%
-        function get_song_activity(obj)
-            % NOTE: to go fast, toggle the fields with the TAB key.
-            % add components
-
-            hs = addcomponents;
-            function hs = addcomponents                                             %   [from_left from_bottom width height]
-                hs.fig = figure('Visible', 'on', 'Tag', 'fig', 'Units', 'Normalized', 'Position', [0.01 0.2 .95 .7]);
-                % open files
-                hs.open = uicontrol(hs.fig,...
-                    'Style', 'pushbutton','Units', 'Normalized',...
-                    'Position',[0.01, 0.01 0.06 0.04],...
-                    'String','Open',...
-                    'UserData', struct('board_adc',[],'Fs',NaN, 'key',''),...
-                    'Callback', @open, 'Tag', 'open');
-
-                % same line
-                hs.subjectString = uicontrol(hs.fig,...
-                    'Style', 'pushbutton', 'Units', 'Normalized',...
-                    'Position',[0.05 0.01 0.3 0.04],... % same line
-                    'Style', 'text', 'Units', 'Normalized',...
-                    'String','Subject name' ); % ("mda", "mdb", ...)'
-
-                hs.subjectEdit= uicontrol(hs.fig,...
-                    'Units', 'Normalized',...
-                    'Position',[0.25 0.01 0.05  0.04],... % same line
-                    'Style', 'edit',...
-                    'String', 'md?', 'Tag', 'subject');
-
-                % Set the save path
-                hs.savePathStr= uicontrol(hs.fig,...
-                    'Units', 'Normalized', 'Style', 'text',...
-                    'Position',[0.33 0.01 0.09 0.04],... 
-                    'String','Save path: ');
-                hs.savePathEdit = uicontrol(hs.fig,...
-                    'Units', 'Normalized', 'Style', 'edit',...
-                    'Position',[0.4 0.01 0.3 0.04],...
-                    'String', 'C:\Users\danpo\Documents\MATLAB\ephysSuite\',...
-                    'Tag', 'savePath');
-
-                % save current selection
-                hs.save = uicontrol(hs.fig,...
-                    'Units', 'Normalized', 'Style', 'pushbutton',...
-                    'Position',[0.9 0.01 0.05  0.04],...
-                    'String','Show','Callback', @show,...
-                    'Tag', 'show');        
-
-                %         [from_left from_bottom width height]
-
-                hs.sa = axes('Units','Normalized', 'Position', [0.04 0.45 0.95 0.50]);
-                hs.ra = axes('Units','Normalized', 'Position', [0.04 0.15 0.95 0.25]);
-            end
-
-            function show(~, ~)
-                % shows on multiple lines
-                function rasterRow(tStamps, i, color)
-                    axes(hs.ra);
-                    line([floor(tStamps),floor(tStamps)], [i, i+1], 'Color', color);
+        function generate_figures(obj, key_pattern)
+            keys = obj.show_keys(key_pattern);
+            for i = 1:length(keys)
+                s = obj.db(keys{i});
+                if  strcmp(s.context, 'song')
+                    key = keys{i};
+%                   obj.gen_psth(key);
+%                   obj.gen_waveforms(key);
+%                   obj.gen_strf(key);
+                    obj.get_song_activity(key);
                 end
-                
-                % clear the raster
-                cla(hs.ra);
-                
-                OpenUD = hs.open.UserData;
-                keys = OpenUD.keys;
-                
-                % for each cell
-                numUnits = length(OpenUD);
-                for i = 1:numUnits
-                    hold on;
-                    key = OpenUD(i).keys;
-                    entry = obj.db(key);
-
-                    % get the time limits in samples
-                    aFs = entry.amplifier_sampling_rate;
-                    
-                    % adjust xlim
-                    axes(hs.sa); SpectXlim = xlim * 60 * aFs; % right into amplifier sampling rate
-                    axes(hs.ra); xlim(SpectXlim)
-                    
-                    % filter timestamps
-                    sTs = entry.spike_timestamps; % query value
-                    sTs = sTs(sTs > SpectXlim(1) & sTs < SpectXlim(2)); % only get within this window
-
-                    % plot the timestamps
-                    for j = 1:length(sTs)
-                        rasterRow(sTs(j), i, 'k');
-                    end
-                end
-
-                % labels
-                yticks([1:numUnits]+.5)
-                yticklabels([1:numUnits])
-                ylabel('Unit')
-                xlabel('time (s)');
-                axes(hs.ra)
-                prettyAxes(hs.ra, 12);
-                
-                axes(hs.sa);
-                xlabel('')
-                prettyAxes(hs.sa, 12);
-                
-                
             end
-            function prettyAxes(axis, fontSize)
-                axis.YAxis.FontSize = fontSize;
-                axis.XAxis.FontSize = fontSize;
-            end
-                
-                
-            function open(hObject, ~)
-                % remove all keys not in key family                keyOrig = input('gimme da key');
-                keyOrig = input('gimme da key','s');
-                key_fam = strsplit(keyOrig, '&');
-                key_fam = key_fam{1};
-
-                keys = obj.db.keys;
-                
-                fin = false;
-                i = 1;
-                while ~fin
-                    whole_key = keys{i};
-                    key_cell = strsplit(whole_key, '&');
-                    key_str = key_cell{1};
-                    if ~strcmp(key_str, key_fam) 
-                        keys = setdiff(keys, {whole_key}); % winnow down
-                        i = i - 1;
-                    end
-                    
-                    i = i + 1;
-                    if i > length(keys)
-                        fin = true;
-                    end
-                end
-                entry = obj.db(keyOrig);
-                mic = entry.microphone;
-                adc_sr = entry.adc_sampling_rate;
-                hObject.UserData = struct('board_adc', mic, 'Fs', adc_sr, 'keys', keys); % frequency_parameters.board_adc_sample_rate
-                
-                axes(hs.sa);
-                spectrogram( mic(end,:), 256, [],[], adc_sr, 'yaxis')
-                colorbar('delete');
-                
-                
-            end
+        end
+        %%
+        function p2p = get_p2p(~, wf_mean)
+            [~, min_i] = min(wf_mean);
+            [~, max_i] = max(wf_mean);
+            p2p = max_i-min_i;
+        end
+        
+        function sym = get_sym(~, wf_mean)
+            [~, min_i] = min(wf_mean);
+            [~, max_i] = max(wf_mean);
+            sym = max_i / min_i;
         end
         %%
         % Make a key for the Map to point to the unit info

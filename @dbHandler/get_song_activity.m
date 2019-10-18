@@ -1,4 +1,4 @@
-function get_song_activity(obj)
+function get_song_activity(obj, key)
     % NOTE: to go fast, toggle the fields with the TAB key.
     % add components
 
@@ -67,8 +67,8 @@ function get_song_activity(obj)
         numUnits = length(OpenUD);
         for i = 1:numUnits
             hold on;
-            key = OpenUD(i).keys;
-            entry = obj.db(key);
+            curr_key = OpenUD(i).keys;
+            entry = obj.db(curr_key);
 
             % get the time limits in samples
             aFs = entry.amplifier_sampling_rate;
@@ -105,15 +105,18 @@ function get_song_activity(obj)
         axis.XAxis.FontSize = fontSize;
     end
 
-
+    
     function open(hObject, ~)
         % remove all keys not in key family
-        keyOrig = input('gimme da key', 's');
+        keyOrig = key;
         keys = obj.get_key_family(keyOrig);
         entry = obj.db(keyOrig);
         mic = entry.microphone;
         adc_sr = entry.adc_sampling_rate;
-        hObject.UserData = struct('board_adc', mic, 'Fs', adc_sr, 'keys', keys); % frequency_parameters.board_adc_sample_rate
+        hObject.UserData = struct(...
+            'board_adc', mic,...
+            'Fs', adc_sr,...
+            'keys', keys); % frequency_parameters.board_adc_sample_rate
 
         axes(hs.sa);
         spectrogram( mic(end,:), 256, [],[], adc_sr, 'yaxis')

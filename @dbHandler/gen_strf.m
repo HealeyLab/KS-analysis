@@ -8,50 +8,37 @@ s = obj.db(key);
 si = s.stim_identities{1};
 uniq = unique(si); % remove redundancies
 usi = uniq(~contains(uniq, 'wav')); % remove non-non-wav files
+Z = nan(39,10); % 39 columns (x) by 10 rows (y)
+% for each amp/freq permutation:
 for i = 1:length(usi)
     % for each stim itself
-    stim_inds = find(strcmp(si,usi{i}));
-    raster_arr = cell(length(stim_inds),1);
-    for j = 1:length(stim_inds)
-        sp_ts = s.spike_timestamps;
-        ind = stim_inds(j);
-        start = on(ind) - 2 * s.amplifier_sampling_rate;
-        stop = off(ind) + 2 * s.amplifier_sampling_rate;
+    ind = find(strcmp(si,usi{i}));
+    
+    % for each incarnation of that permutation (ie, only once for these
+    % puppies)
+    sp_ts = s.spike_timestamps;
+    start = on(ind);
+    stop = off(ind);
 
-        raster_arr{j} = ((intersect(...
-            sp_ts(sp_ts > start),...
-            sp_ts(sp_ts < stop))...
-            - start) / s.amplifier_sampling_rate)';                        
-    end
-
-    fig = figure('units','normalized','outerposition',[0 0 .25 .8]);
-    subplot(3,1,1);
-    for k = 1:length(wav_files)
-        if contains(usi{i}, wav_files(k).name)
-            curr_wav = wav_files(k);
-        end
-    end
-
-    spectrogram(... 
-        [nan(2*s.adc_sampling_rate, 1); curr_wav.data; nan(2*s.adc_sampling_rate, 1)],...
-        256, [],[],s.adc_sampling_rate, 'yaxis')
-    colorbar('delete');
-
-    title([replace(curr_wav.name(1:end-4), '_', ' ') ' ' s.context],'FontSize', 20);
-
-    subplot(3,1,2);
-    [xpoints, ~] = plotSpikeRaster(raster_arr,...
-            'PlotTYpe','vertline', 'XLimForCell', [0 (stop-start)/s.amplifier_sampling_rate]);
-
-    histo_axes = subplot(3,1,3);    
-    bin = 0.010; % bin size in s
-    histogram(histo_axes, xpoints, (0:bin:(stop-start)/s.amplifier_sampling_rate)); % convert ms to s
-    xlim([0, (stop-start)/s.amplifier_sampling_rate])
-%     psth_filename = ['C:\Users\danpo\Documents\dbh_imgs\'...
-%         key '_psth_' curr_wav.name(1:end-4) '_' s.context];
-%     saveas(fig, psth_filename, 'svg')
-% %             saveas(fig, [psth_filename '.pdf'])
-%     close(fig)
+    raster_arr = ((intersect(...
+        sp_ts(sp_ts > start),...
+        sp_ts(sp_ts < stop))...
+        - start) / s.amplifier_sampling_rate)';                        
+    
+    % get x and y indices
+    s_text = usi{i};
+    spl = split(s_text, ' ');
+    freq = str2double(spl{1});
+    amp = str2double(spl{2});
+    x = floor(log2(freq/200)/.1);
+    y = floor(amp / 10);
+    Z(x,y)= length(raster_arr);
 end
 
+figure('units','normalized','outerposition',[0 0 .25 .8]);
+
+key = replace(key, '_', ' ');
+title({key});%;['p2p: ' num2str(s.p2p) '            sym: ' num2str(s.sym)]})
+
+surf(Z)
 end

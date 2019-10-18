@@ -24,7 +24,7 @@ for i = 1:length(usi)
             - start) / s.amplifier_sampling_rate)';                        
     end
 
-    fig = figure('units','normalized','outerposition',[0 0 .25 .8]);
+    figure('units','normalized','outerposition',[0 0 .9 .8]);
     subplot(3,1,1);
     for k = 1:length(wav_files)
         if contains(usi{i}, wav_files(k).name)
@@ -36,8 +36,12 @@ for i = 1:length(usi)
         [nan(2*s.adc_sampling_rate, 1); curr_wav.data; nan(2*s.adc_sampling_rate, 1)],...
         256, [],[],s.adc_sampling_rate, 'yaxis')
     colorbar('delete');
-
-    title([replace(curr_wav.name(1:end-4), '_', ' ') ' ' s.context],'FontSize', 20);
+    
+    key = replace(key, '_', ' ');
+    stim_type = replace(curr_wav.name(1:end-4), '_', ' ');
+    title({key;...
+        [stim_type ' ' s.context]},...
+        'FontSize', 20);
 
     subplot(3,1,2);
     [xpoints, ~] = plotSpikeRaster(raster_arr,...
