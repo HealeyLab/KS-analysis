@@ -1,11 +1,11 @@
-function get_song_activity(obj, key)
+function fig_out = get_song_activity(obj, key, only)
     % NOTE: to go fast, toggle the fields with the TAB key.
     % add components
 
     hs = addcomponents;
     function hs = addcomponents                                             %   [from_left from_bottom width height]
         hs.fig = figure('Visible', 'on', 'Tag', 'fig', 'Units', 'Normalized', 'Position', [0.01 0.2 .95 .7]);
-        
+        fig_out = hs.fig;
         hs.open = uicontrol(hs.fig,...
             'Style', 'pushbutton','Units', 'Normalized',...
             'Position',[0.01, 0.01 0.06 0.04],...
@@ -80,10 +80,17 @@ function get_song_activity(obj, key)
             % filter timestamps
             sTs = entry.spike_timestamps; % query value
             sTs = sTs(sTs > SpectXlim(1) & sTs < SpectXlim(2)); % only get within this window
-
+            
+            p2p = obj.get_p2p(entry);
+            if p2p >= .43
+                color = obj.BB;
+            else
+                color = obj.NN;
+            end
+            
             % plot the timestamps
             for j = 1:length(sTs)
-                rasterRow(sTs(j), i, 'k');
+                rasterRow(sTs(j), i, color);
             end
         end
 
@@ -109,7 +116,11 @@ function get_song_activity(obj, key)
     function open(hObject, ~)
         % remove all keys not in key family
         keyOrig = key;
-        keys = obj.get_key_family(keyOrig);
+        if only
+            keys = key;
+        else
+            keys = obj.get_key_family(keyOrig);
+        end
         entry = obj.db(keyOrig);
         mic = entry.microphone;
         adc_sr = entry.adc_sampling_rate;

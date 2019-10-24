@@ -112,8 +112,8 @@ function waveform_analysis(obj)
 
         [Vmax,Imax] = max(wf_mean);
         [Vmin,Imin] = min(wf_mean);
-        s.p2p = abs(Imax - Imin) / s.amplifier_sampling_rate * 1000 ;
-        s.sym = abs(Vmax/Vmin);
+        s.p2p = obj.get_p2p(s); % abs(Imax - Imin) / s.amplifier_sampling_rate * 1000 ;
+        s.sym = obj.get_sym(s); % abs(Vmax/Vmin);
         plot(Imax, Vmax, 'm*');
         plot(Imin, Vmin, 'm*');
         hold off;

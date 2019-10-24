@@ -7,11 +7,10 @@ function keys = show_keys(obj, varargin)
         
         for i=1:length(keycell)
             if contains(keycell{i}, pattern)
-                disp(keycell{i})
                 keys = [keys; keycell{i}];
             end
         end
     else
-        disp(obj.db.keys')
+        keys = obj.db.keys';
     end
 end

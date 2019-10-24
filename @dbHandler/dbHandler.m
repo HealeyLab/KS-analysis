@@ -55,27 +55,47 @@ classdef dbHandler
             end
         end
         %%
-        function generate_figures(obj, key_pattern)
+        function color = get_color(obj, s)
+            if obj.get_p2p(s) >= .43
+                color = obj.BB;
+            else
+                color = obj.NN;
+            end
+        end
+        %%
+        function figs = generate_figures(obj, key_pattern)
+            % return a list of figs that can ust be deleted real easily
+            figs = [];
             keys = obj.show_keys(key_pattern);
             for i = 1:length(keys)
-                s = obj.db(keys{i});
+                key = keys{i};
+                s = obj.db(key);
+                
+                waveforms = obj.gen_waveforms(key, 1); % 1 means only one
+                figs = [figs waveforms];
                 if  strcmp(s.context, 'song')
-                    key = keys{i};
-%                   obj.gen_psth(key);
-%                   obj.gen_waveforms(key);
-%                   obj.gen_strf(key);
-                    obj.get_song_activity(key);
+                    son = obj.get_song_activity(key, 1); % 1 means only one
+                    figs = [figs son];
+                elseif strcmp(s.context, 'habituation')
+                    psth = obj.gen_psth(key);
+                    strf = obj.gen_strf(key);
+                    
+                    figs = [figs psth strf];
                 end
             end
         end
         %%
-        function p2p = get_p2p(~, wf_mean)
+        function p2p = get_p2p(~, s)
+            wf = s.spike_waveforms;
+            wf_mean = nanmean(wf,2);
             [~, min_i] = min(wf_mean);
             [~, max_i] = max(wf_mean);
-            p2p = max_i-min_i;
+            p2p = (max_i-min_i) / s.amplifier_sampling_rate * 1000;
         end
         
-        function sym = get_sym(~, wf_mean)
+        function sym = get_sym(~, s)
+            wf = s.spike_waveforms;
+            wf_mean = nanmean(wf,2);
             [~, min_i] = min(wf_mean);
             [~, max_i] = max(wf_mean);
             sym = max_i / min_i;

@@ -1,4 +1,4 @@
-function gen_psth(obj, key)
+function fig_out = gen_psth(obj, key)
 
 s = obj.db(key);
 
@@ -8,6 +8,8 @@ s = obj.db(key);
 si = s.stim_identities{1};
 uniq = unique(si); % remove redundancies
 usi = uniq(contains(uniq, 'wav')); % remove non-wav files
+% only for stim type
+
 for i = 1:length(usi)
     % for each stim itself
     stim_inds = find(strcmp(si,usi{i}));
@@ -24,7 +26,7 @@ for i = 1:length(usi)
             - start) / s.amplifier_sampling_rate)';                        
     end
 
-    figure('units','normalized','outerposition',[0 0 .9 .8]);
+    fig_out = figure('units','normalized','outerposition',[0 0 .9 .8]);
     subplot(3,1,1);
     for k = 1:length(wav_files)
         if contains(usi{i}, wav_files(k).name)
