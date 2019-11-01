@@ -268,7 +268,7 @@ classdef dbHandler
             good_clusters =gwfparams.cluster_quality.id(...
                 find(gwfparams.cluster_quality.group(:,1)=='g')); % | gwfparams.cluster_quality.group(:,1)=='m'));
             gwfparams.good_clusters = good_clusters;
-            wf = getWaveForms_BK(gwfparams);
+            wf = obj.getWaveForms_BK(gwfparams);
             
             %%
 %             wf = getWaveForms(gwfparams);
@@ -377,6 +377,15 @@ classdef dbHandler
                 i = i + 1;
             end
             cleaned_vec = vec;
+        end
+        
+        function show_each_entry_size(obj)
+            for i = 1:length(obj.db)
+                keys = dbh.db.keys;
+                s = dbh.db(keys{i});
+                disp(keys{i})
+                whos('s')
+            end
         end
     end
 end

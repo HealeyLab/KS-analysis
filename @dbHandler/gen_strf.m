@@ -48,7 +48,7 @@ for key_inds = 1:length(keys)
     heatmap(xvar,yvar,Z, 'Colormap', fliplr([0:1/cc:1; 0:1/cc:1;0:1/cc:1] .* color')');
 
     xlabel('Frequency (Hz)')
-    key = replace(key, '_', ' ');c
+    key = replace(key, '_', ' ');
     title({key});
 end
 end
