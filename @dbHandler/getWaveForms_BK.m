@@ -1,4 +1,4 @@
-function wf = getWaveForms_BK(gwfparams)
+function wf = getWaveForms_BK(~,gwfparams)
 % function wf = getWaveForms(gwfparams)
 %
 % Extracts individual spike waveforms from the raw datafile, for multiple

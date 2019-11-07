@@ -23,6 +23,10 @@
 classdef dbHandler
     properties
         dbPath = 'C:\Users\danpo\Documents\db.mat';%'E:\DJP thesis sorting\db.mat';
+        db = containers.Map; % initialized as none, basically
+        db_auxPath = 'C:\Users\danpo\Documents\db_aux.mat';
+        db_aux = containers.Map; % an extra container for information like microphone data
+        
         audioPaths = {...
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdx',...
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdy',...
@@ -32,9 +36,6 @@ classdef dbHandler
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdd',...
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mde'};
         
-        db = containers.Map; % initialized as none, basically
-        count = 0;
-
         wf_keys = {} % a list of keys to use for wf_analysis
         
         BB = [0 63 92] / 255;
@@ -44,15 +45,10 @@ classdef dbHandler
     end
     methods 
         function obj = dbHandler()
+            tic
             S = load(obj.dbPath); 
             obj.db = S.db;
-            keys = obj.db.keys;
-            for i = 1:length(keys)
-                s = obj.db(keys{i});
-                if s.for_wf_analysis
-                    obj.wf_keys{length(obj.wf_keys) + 1} = keys{i};
-                end
-            end
+            disp(['loaded in ' num2str(toc/60) ' mins'])
         end
         %%
         function color = get_color(obj, s)
@@ -225,22 +221,28 @@ classdef dbHandler
                     s.stim_identities = stim_identities;
                 end
                 
-                % for microphone trace
-                stim_data_path = fullfile(workingDirectory, 'adc_data.mat');
-                S = load(stim_data_path); % S.board_adc, S.adc_sr
-                s.microphone = S.board_adc(3,:);
-                s.adc_sampling_rate = S.adc_sr;
-
+                % for microphone trace, only add if context is "song"
+                if strcmp(s.context, 'song')
+                    stim_data_path = fullfile(workingDirectory, 'adc_data.mat');
+                    S = load(stim_data_path); % S.board_adc, S.adc_sr
+                    s.microphone = S.board_adc(3,:);
+                    s.adc_sampling_rate = S.adc_sr;
+                end
                 % when was this added?
                 s.whenadded = datetime;
                 obj.db(key) = s;
             end
-            
-            db = obj.db;
-            save(obj.dbPath, 'db','-v7.3');
+%             obj.save_db();
         end
         
-        function [spike_waveform_info, spike_timestamps, sp] = getWaveFormsDriver(~)
+        function save_db(obj)
+            tic;
+            db = obj.db;
+            save(obj.dbPath, 'db','-v7.3');
+            disp(['saving time: ' num2str(toc/3600) ' hours'])
+        end
+        
+        function [spike_waveform_info, spike_timestamps, sp] = getWaveFormsDriver(obj)
             close all;
             
             dataDir = pwd;

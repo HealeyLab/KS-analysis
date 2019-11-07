@@ -1,14 +1,8 @@
-
-function [fig, tosave,...
-        BBavg, NNavg, BNavg, NBavg] = cross_corr_helper(obj,tet_cells,...
-        BBavg, NNavg, BNavg, NBavg)
+function [fig] = cross_corr_helper(obj,tet_cells)
     db = obj.db;
     fig = figure('units','normalized','outerposition',[0 0 1 1]);
     hold on;
-
     tet_cells = obj.filter_tet_cells(tet_cells);
-    tosave = 0;
-
     for i = 1:size(tet_cells,1)
         key_i = tet_cells(i,:);
         s_i = db(obj.keyhash(key_i{1}, key_i{2}, key_i{3}, key_i{4}));
@@ -32,53 +26,19 @@ function [fig, tosave,...
             xlim([-.1, .1]);
             yl = ylim; line([0 0], [0 yl(2)], 'Color', 'k');
 
-            tosave = isfield(s_i, 'p2p') && isfield(s_j, 'p2p');
-            if tosave
-                if s_i.p2p >= .43 && s_j.p2p >= .43
-                    h.FaceColor = BB; h. EdgeColor = BB;
-                elseif s_i.p2p < .43 && s_j.p2p < .43
-                    h.FaceColor = NN; h. EdgeColor = NN;
-                elseif s_i.p2p >= .43 && s_j.p2p < .43
-                    h.FaceColor = BN; h. EdgeColor = BN;
-                elseif s_i.p2p < .43 && s_j.p2p >= .43
-                    h.FaceColor = NB; h.EdgeColor = NB;
-                end
+            p2p_i = obj.get_p2p(s_i);
+            p2p_j = obj.get_p2p(s_j);
 
-            %% quick analysis bit here at the end
-            % will get devation from median. value of zero means
-            % flat, value of negative meas inhibition, value of
-            % positive means excitation
-
-            % I only took from one side because though xcorr isn't
-            % really commutative, you just don't see it playing out
-            % that way in the data.
-                if j > i
-                    N = histcounts(tsOffsets, 100);
-                    %TODO: MAKE THIS EVOKED ACTIVITY
-                    % so this is median deviation. Wish me luck.
-                    [lmi, l_min] = min(N(1:50));  [lma, l_max] = max(N(1:50)); 
-                    [rmi, r_min] = min(N(51:100)); [rma, r_max] = max(N(51:100));
-                    to_add = [l_min-50 l_max-50 r_min r_max]; % fix index
-
-                    if s_i.p2p >= .43 && s_j.p2p >= .43
-                        BBavg = [BBavg; to_add];
-                    elseif s_i.p2p < .43 && s_j.p2p < .43
-                        NNavg = [NNavg; to_add];
-                    elseif s_i.p2p >= .43 && s_j.p2p < .43
-%                                 if max_ind <= 2
-                        BNavg = [BNavg; to_add];
-%                                 else
-%                                     NBavg = [NBavg; l_min l_max r_min r_max];
-%                                 end
-                    elseif s_i.p2p < .43 && s_j.p2p >= .43
-%                                 if max_ind <= 2
-                        NBavg = [NBavg; to_add];
-%                                 else
-%                                     BNavg = [BNavg; l_min l_max r_min r_max];
-%                                 end
-                    end
-                end
+            if     p2p_i >= .43&& p2p_j >= .43
+                h.FaceColor = BB; h. EdgeColor = BB;
+            elseif p2p_i < .43  && p2p_j < .43
+                h.FaceColor = NN; h. EdgeColor = NN;
+            elseif p2p_i >= .43 && p2p_j < .43
+                h.FaceColor = BN; h. EdgeColor = BN;
+            elseif p2p_i < .43  && p2p_j >= .43
+                h.FaceColor = NB; h.EdgeColor = NB;
             end
+
         end
     end      
 hold off;
