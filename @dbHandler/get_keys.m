@@ -1,4 +1,4 @@
-function keys = show_keys(obj, varargin)
+function keys = get_keys(obj, varargin)
     if ~isempty(varargin)
         keycell = obj.db.keys;
         pattern = varargin{1};

@@ -24,8 +24,6 @@ classdef dbHandler
     properties
         dbPath = 'C:\Users\danpo\Documents\db.mat';%'E:\DJP thesis sorting\db.mat';
         db = containers.Map; % initialized as none, basically
-        db_auxPath = 'C:\Users\danpo\Documents\db_aux.mat';
-        db_aux = containers.Map; % an extra container for information like microphone data
         
         audioPaths = {...
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdx',...
@@ -36,7 +34,6 @@ classdef dbHandler
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdd',...
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mde'};
         
-        wf_keys = {} % a list of keys to use for wf_analysis
         
         BB = [0 63 92] / 255;
         BN = [87 82 126] / 255; 
@@ -86,15 +83,16 @@ classdef dbHandler
             wf_mean = nanmean(wf,2);
             [~, min_i] = min(wf_mean);
             [~, max_i] = max(wf_mean);
-            p2p = (max_i-min_i) / s.amplifier_sampling_rate * 1000;
+            p2p = abs(max_i-min_i) / s.amplifier_sampling_rate * 1000;
         end
         
         function sym = get_sym(~, s)
             wf = s.spike_waveforms;
             wf_mean = nanmean(wf,2);
-            [~, min_i] = min(wf_mean);
-            [~, max_i] = max(wf_mean);
-            sym = max_i / min_i;
+            [min_v, ~]= min(wf_mean);
+            [max_v, ~] = max(wf_mean);
+            our = abs([min_v max_v]);
+            sym = abs(min(our) / max(our));
         end
         %%
         % Make a key for the Map to point to the unit info
@@ -220,21 +218,31 @@ classdef dbHandler
                     s.stim_timestamps = stim_timestamps;
                     s.stim_identities = stim_identities;
                 end
-                
+                % this gets kept with the rest of the data,
+                % redundantly. Because I'm lazy and it's basically size
+                % zero.
+                s.adc_sampling_rate = S.adc_sr;
                 % for microphone trace, only add if context is "song"
+                % I'm adding the mic data to a new key so that it doesn't
+                % take up too much space, so that it doesn't take too much
+                % time loading and saving
                 if strcmp(s.context, 'song')
                     stim_data_path = fullfile(workingDirectory, 'adc_data.mat');
                     S = load(stim_data_path); % S.board_adc, S.adc_sr
-                    s.microphone = S.board_adc(3,:);
-                    s.adc_sampling_rate = S.adc_sr;
+                    obj.db(familyname(key)) = S.board_adc(3,:);
                 end
+                
+                
                 % when was this added?
                 s.whenadded = datetime;
                 obj.db(key) = s;
             end
 %             obj.save_db();
         end
-        
+        function fname = familyname(k)
+            fname = strsplit(k, '&');
+            fname = fname{1};
+        end
         function save_db(obj)
             tic;
             db = obj.db;
@@ -380,6 +388,38 @@ classdef dbHandler
             end
             cleaned_vec = vec;
         end
+        
+        function [id, num] = get_subject_id(~, key)
+            if contains(key, 'mda')
+                id = 'mda';
+                num = 1;
+            elseif contains(key, 'mdb')
+                id = 'mdb';
+                num = 2;
+            elseif contains(key, 'mdc')
+                id = 'mdc';
+                num = 3;
+            elseif contains(key, 'mdd')
+                id = 'mdd';
+                num = 4;
+            elseif contains(key, 'mde')
+                id = 'mde';
+                num = 5;
+            elseif contains(key, 'mdx')
+                id = 'mdx';
+                num = 6;
+            elseif contains(key, 'mdy')
+                id = 'mdy';
+                num = 7;
+            elseif contains(key, 'mdz')
+                id = 'mdz';
+                num = 8;
+            else
+                id = '';
+                num = 0;
+            end
+        end
+            
         
         function show_each_entry_size(obj)
             for i = 1:length(obj.db)
