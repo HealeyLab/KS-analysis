@@ -4,7 +4,7 @@ function fig_out = get_song_activity(obj, key, only)
 
     hs = addcomponents;
     show_spectrogram(key);
-    syls = [];
+    syl_arr = [];
     function hs = addcomponents                                             %   [from_left from_bottom width height]        
         
         hs.fig = figure('Visible', 'on', 'Tag', 'fig', 'Units', 'Normalized', 'Position', [0.01 0.2 .95 .7]);
@@ -120,9 +120,9 @@ function fig_out = get_song_activity(obj, key, only)
     function align_syllables(~,~)
         % First, organize the syllables according to syllable id
         dict = containers.Map('KeyType','char','ValueType', 'any');
-        for syl_ind = 1:length(syls)
+        for syl_ind = 1:length(syl_arr)
             
-            curr_syl = syls(syl_ind);
+            curr_syl = syl_arr(syl_ind);
             if ~isKey(dict, curr_syl.id)
                 dict(curr_syl.id) = [];                
             end
@@ -134,83 +134,103 @@ function fig_out = get_song_activity(obj, key, only)
         % show syllable activity
         % for syllable id in the id,
         dict_keys = dict.keys;
-        % for each id:
-        for syl_id_ind = 1:length(dict_keys)
-            % for each syllable with that id:
+        for i = 1:length(dict_keys)
+            sylscells = []; % [rows cells]
             figure('Position', [300, 100, 300, 300]);
-            subplot(211);
-            plot the syllable here.
-            
-            curr_syl_id = dict_keys(syl_id_ind); % {'A'}
+            %% for each syllable id:
+            curr_syl_id = dict_keys(i); % {'A'}
             curr_syl_id = curr_syl_id{1}; % 'A'
             curr_syls = dict(curr_syl_id); % syllables with the 'A' id
             
+            basis_syl = curr_syls(1);
+            for j = 1:length(curr_syls)
+            %% for each syllable with that syllable id:
+            % except for the first, that's the basis
             % currently assuming all syllables are not single...
-            
-            basis_syl = curr_syls{1};
-            for actual_syl_ind = 2:length(curr_syls)
-                % for each actual syllable of that type (except for the
-                % first, that's the basis,
-                curr_syl = curr_syls(actual_syl_index);
-                [co, lag] = xcorr(basis_syl, curr_syl); 
-                [~,I] = max((co));
-                lagDiff = lag(I); % is the difference in start of signal between orignial .wav and in TTL envelope
+                lagDiff = 0;
+                if j > 1 % if not the basis syllable,
+                    curr_syl = curr_syls(j);
+                    [co, lag] = xcorr(basis_syl.sonogram, curr_syl.sonogram); 
+                    [~,I] = max((co));
+                    lagDiff = lag(I); % is the difference in start of signal between orignial .wav and in TTL envelope
+                end
                 
-                for cell_ind = 1:length(curr_syl.cells)
-                    adjusted_sTs = basis_syl(cell_ind).cells + lagDiff; % or minus? idk
+                subplot(211)
+                plot((1:length(curr_syl.sonogram))+lagDiff, curr_syl.sonogram); hold on
+                
+                % align all syllables to the basis syllable
+                syl_cells = curr_syl.cells;
+                syl_cells_keys = syl_cells.keys;    
+                % redundantly assigned for now
+                subplot(212)
+                sylscells = [length(curr_syls) length(syl_cells)];
+                for k = 1:length(syl_cells_keys)                   
+                    %% for each cell of that syllable:
+                    % adjust
+                    cell_sTs = syl_cells(syl_cells_keys{k}); % get cell sTs
+                    cell_sTs = cell_sTs + lagDiff; 
+                    
+                    % now plot the cell rasters
+                    for m = 1:length(cell_sTs)
+                        %% for each spike of that cell:
+                        % TODO: is this actually plotting different
+                        % syllables?
+                        % TODO: how are the rasters aligned without
+                        % termporal normalization? (ie, subtracting by a
+                        % start point
+                        y = sylscells(1) * (k-1) + j; % num syllables times cellind norm + cur syl ind
+                        rasterRow(cell_sTs(m), y, obj.get_color(obj.db(syl_cells_keys{k}))); 
+                    end
                 end
-                %----------------------------------
-                subplot(212);
-                for spike_ind = 1:length(adjusted_sTs)
-                    % the y value needs to take into account the n-th
-                    % syllable and the n-th unit within each syllable. Oy
-                    % vavoy.
-                    y=1; % temporary value
-                    rasterRow(adjusted_sTs(spike_ind), y, 'k'); 
+            end
+            SpectXlim = xlim / curr_syl.adc_sr * curr_syl.amplifier_sr; 
+            cla(subplot(211));
+            spectrogram(basis_syl.sonogram, 256, [],[], basis_syl.adc_sr, 'yaxis');
+            colorbar('delete');
+            title(dict_keys{i}); % give it a title
+            
+            % convert to amplifier sampling rate (for neurons)
+            subplot(212)
+            xlim(SpectXlim)
+            ylim([1 length(curr_syl.cells)*length(curr_syls)+1])
+            % shade figure
+            hold on;
+            num_syls = sylscells(1);
+            num_cells = sylscells(2);
+            for j = 1:num_cells % total number of regions
+                if mod(j, 2) == 1
+                    xl = xlim;
+                    baseval = (j - 1) * num_syls + 1;
+                    h = fill([xl(1) xl(2) xl(2) xl(1)],...
+                        [baseval baseval baseval+num_syls baseval+num_syls],...
+                        [0.9 0.9 0.9], 'LineStyle', 'None'); 
+                    set(h, 'facealpha', 0.5);
                 end
-                title(syls(syl_ind).id);
-                %----------------------------------
             end
         end
-
-        % Third, once you've got the sounds aligned, 
-
     end
+    
     function rasterRow(tStamps, i, color)
         line([floor(tStamps),floor(tStamps)], [i, i+1], 'Color', color);
     end
     function show(~, ~)
-        
-        % clear the raster
-        cla(hs.ra);
-        
-        % get keys
-        keys = get_keys();
-        
-        % for each cell
-        numUnits = length(keys);
+        cla(hs.ra); % clear the raster
+        keys = get_keys(); % get keys
+        numUnits = length(keys); % for each cell...
         for i = 1:numUnits
             hold on;
             curr_key = keys{i};
             entry = obj.db(curr_key);
 
-            % get the time limits in samples
-            aFs = entry.amplifier_sampling_rate;
-
             % adjust xlim
-            axes(hs.sa); SpectXlim = xlim * 60 * aFs; % right into amplifier sampling rate (for neurons)
+            axes(hs.sa); SpectXlim = xlim * 60 * entry.amplifier_sampling_rate; % convert to amplifier sampling rate (for neurons)
             axes(hs.ra); xlim(SpectXlim)
 
             % filter timestamps
             sTs = entry.spike_timestamps; % query value
             sTs = sTs(sTs > SpectXlim(1) & sTs < SpectXlim(2)); % only get within this window
             
-            p2p = obj.get_p2p(entry);
-            if p2p >= .43
-                color = obj.BB;
-            else
-                color = obj.NN;
-            end
+            color = obj.get_color(entry);
             
             % plot the timestamps
             axes(hs.ra);
@@ -220,26 +240,21 @@ function fig_out = get_song_activity(obj, key, only)
         end
 
         % labels
-        yticks([1:numUnits]+.5)
-        yticklabels([1:numUnits])
-        ylabel('Unit')
-        xlabel('time (s)');
-        axes(hs.ra)
-        prettyAxes(hs.ra, 12);
+        yticks([1:numUnits]+.5);
+        yticklabels([1:numUnits]);
+        ylabel('Unit'); xlabel('time (s)');
+        axes(hs.ra); prettyAxes(hs.ra, 12);
 
-        axes(hs.sa);
-        xlabel('')
+        axes(hs.sa); xlabel('')
         prettyAxes(hs.sa, 12);
     end
     function prettyAxes(axis, fontSize)
-        axis.YAxis.FontSize = fontSize;
-        axis.XAxis.FontSize = fontSize;
+        axis.YAxis.FontSize = fontSize; axis.XAxis.FontSize = fontSize;
     end
     function show_spectrogram(key)
         % remove all keys not in key family
-        
         entry = obj.db(key);
-        mic = entry.microphone;
+        mic = obj.get_microphone(key); % entry.microphone;
         adc_sr = entry.adc_sampling_rate;
 
         % Filter
@@ -257,7 +272,7 @@ function fig_out = get_song_activity(obj, key, only)
         colorbar('delete');
     end
 %  --------------------------------------
-    function syl = make_syllable(id)
+    function curr_syl = make_syllable(id)
         [x,~]=ginput(2);
         axes(hs.sa);
         line([x(1), x(1)], [0,15], 'Color', 'k');
@@ -269,8 +284,9 @@ function fig_out = get_song_activity(obj, key, only)
         text(hs.sa, x(1), 12, id, 'FontSize', 18);
         
         % get spiketrains
+        i=0;
         keys = get_keys();
-        syl = syllable(obj, x, keys, id);
-        syls = [syls syl];
+        curr_syl = syllable(obj, x, keys, id);
+        syl_arr = [syl_arr curr_syl];
     end
 end

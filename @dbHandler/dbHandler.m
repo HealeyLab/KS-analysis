@@ -110,7 +110,11 @@ classdef dbHandler
             channel = splitcell{3};
             goodness = splitcell{4};
         end
-            
+        
+        function mic_data = get_microphone(obj, key)
+            famkey = obj.get_family_name(key);
+            mic_data = obj.db(famkey);
+        end
         
         %% Remove all entries with match to key
         function remove(obj, key_family)
@@ -229,7 +233,7 @@ classdef dbHandler
                 if strcmp(s.context, 'song')
                     stim_data_path = fullfile(workingDirectory, 'adc_data.mat');
                     S = load(stim_data_path); % S.board_adc, S.adc_sr
-                    obj.db(familyname(key)) = S.board_adc(3,:);
+                    obj.db(obj.get_family_name(key)) = S.board_adc(3,:);
                 end
                 
                 
@@ -239,7 +243,7 @@ classdef dbHandler
             end
 %             obj.save_db();
         end
-        function fname = familyname(k)
+        function fname = get_family_name(~, k)
             fname = strsplit(k, '&');
             fname = fname{1};
         end
@@ -419,7 +423,6 @@ classdef dbHandler
                 num = 0;
             end
         end
-            
         
         function show_each_entry_size(obj)
             for i = 1:length(obj.db)

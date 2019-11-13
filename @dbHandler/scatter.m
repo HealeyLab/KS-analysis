@@ -1,4 +1,4 @@
-function scatter(obj)
+function vec = scatter(obj)
     % This function deals a lot with whether you are using a particular
     % unit for waveform analysis. Let's get into what that means.
     % for_wf_analysis: is for this kind of analysis, w/o narrowing down
@@ -6,38 +6,39 @@ function scatter(obj)
     % the analysis.
     % goodness: 'good ', 'mua  ', or 'noise'. Note the spaces. How it was
     % sorted in Kilosort.
-    
-    vec=[];
-    db = obj.db;
-    keys = obj.get_keys('&'); % using & as a pattern excludes the auxiliary entries
-    for key_ind = 1:length(keys)
-        key = keys{key_ind};
-        s = db(key);
+    if ~exist('vec', 'var')
+        vec=[];
+        db = obj.db;
+        keys = obj.get_keys('&'); % using & as a pattern excludes the auxiliary entries
+        for key_ind = 1:length(keys)
+            key = keys{key_ind};
+            s = db(key);
 
-        % filtering for ones that are good and for wf analysis
-        if strcmp(strrep(db(key).goodness,' ', ''), 'good') && db(key).for_wf_analysis
-            
-            % Get evoked firing rate, if applicable
-            total_spikes = 0;
-            total_time = 0;    
-            if isfield(db(key), 'stim_timestamps')
-                [on, off, ~]=get_stim_on_off(obj, key);
+            % filtering for ones that are good and for wf analysis
+            if strcmp(strrep(db(key).goodness,' ', ''), 'good') && db(key).for_wf_analysis
 
-                for j = 2:length(db(key).stim_timestamps)-1 % ignore the first and last one because might be truncated.
-                    num_sp = length(s.spike_timestamps(...
-                        s.spike_timestamps>on(j) &...
-                        s.spike_timestamps<off(j)));
-                    total_spikes = total_spikes + num_sp;
-                    total_time = total_time +...
-                        1 / s.adc_sampling_rate * (off(j) - on(j));
+                % Get evoked firing rate, if applicable
+                total_spikes = 0;
+                total_time = 0;    
+                if isfield(db(key), 'stim_timestamps')
+                    [on, off, ~]=get_stim_on_off(obj, key);
+
+                    for j = 2:length(db(key).stim_timestamps)-1 % ignore the first and last one because might be truncated.
+                        num_sp = length(s.spike_timestamps(...
+                            s.spike_timestamps>on(j) &...
+                            s.spike_timestamps<off(j)));
+                        total_spikes = total_spikes + num_sp;
+                        total_time = total_time +...
+                            1 / s.adc_sampling_rate * (off(j) - on(j));
+                    end
+                else
+                    total_spikes = NaN; total_time = NaN;
                 end
-            else
-                total_spikes = NaN; total_time = NaN;
+                [~, id_num] = obj.get_subject_id(key);
+                vec = [vec; obj.get_p2p(s) obj.get_sym(s)...
+                    total_spikes/total_time s.depth obj.get_time_of_day(key) id_num];
+                disp([num2str(length(vec)) ' ' key])
             end
-            [~, id_num] = obj.get_subject_id(key);
-            vec = [vec; obj.get_p2p(s) obj.get_sym(s)...
-                total_spikes/total_time s.depth obj.get_time_of_day(key) id_num];
-            disp([num2str(length(vec)) ' ' key])
         end
     end
     %% show kmeans for p2p vs sym
@@ -92,7 +93,7 @@ function scatter(obj)
     ylabel('Evoked Fr (Hz)')    
     %% p2p vs sym vs fr
     subplot(3,2,6)
-    scatter3(vec(:,1), vec(:,2), vec(:,3), 'jitter', 'on', 'filled', 'k')
+    scatter3(vec(:,1), vec(:,2), vec(:,3), 'jitter', 'on')
     title('p2p vs symmetry vs evoked fr')
     xlabel('p2p')
     ylabel('symmetry')

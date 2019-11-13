@@ -10,7 +10,8 @@ while ~fin
     whole_key = keys{i};
     key_cell = strsplit(whole_key, '&');
     key_str = key_cell{1};
-    if ~strcmp(key_str, key_fam) 
+    if ~strcmp(key_str, key_fam) || ~contains(whole_key, '&')
+        % the ~contains(... is for keys that hold aux data, like microphone
         keys = setdiff(keys, {whole_key}); % winnow down
         i = i - 1;
     end

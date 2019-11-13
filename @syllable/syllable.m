@@ -1,36 +1,57 @@
 classdef syllable
     %SYLLABLE Holds data about waveform and neural activity of a syllable
     %   Stores two pieces of information: 
-    %   sonogram    : timestamps at beginning and end of sound
+    %   window_s    : timestamps at beginning and end of sound
     %   cells       : a containers.Map that contains a struct with the following:
     %                    spiketrain     : the spikes during the sound
     %                    key            : keyhash for that cell
     
-    properties
+    properties (SetAccess = immutable)
         dbh;
-        sonogram;
+        window_s;
         cells = containers.Map('KeyType','char','ValueType', 'any');
         id = ''
+        sonogram;
+        adc_sr;
+        amplifier_sr;
     end
     
     methods
-        function obj = syllable(dbh, sonogram, keys, id)
+        function obj = syllable(dbh, window_s, cell_keys, id)
             %SYLLABLE Construct an instance of this class
             % keys is a cell array of keyhashes    
             obj.dbh = dbh;
-            obj.sonogram = sonogram; % x(1) and x(2)
+            obj.window_s = window_s; % x(1) and x(2)
             obj.id = id;
             % uses the keyhash to grab the spiketrain, and narrows down
             % only the spikes that happen during the syllable, using the
-            % sonogram's timestamps.
+            % window_s's timestamps.
             
-            % first, convert sonogram's timestamps to amplifier timestamps
-            for i=1:length(keys)
-                entry = dbh.db(keys{i});
-                amp_x = obj.sonogram * 60 * entry.amplifier_sampling_rate;
+            %% 
+            % first, convert window_s's timestamps to amplifier timestamps
+            for i=1:length(cell_keys)
+                % get entry and find timestamps
+                entry = dbh.db(cell_keys{i});
+                
+                if i == 1
+                    % sono is the syllable.window_s field, a [double double]
+                    mic = dbh.get_microphone(cell_keys{1});
+                    obj.adc_sr = entry.adc_sampling_rate;
+                    obj.amplifier_sr = entry.amplifier_sampling_rate;
+                    win = uint64(obj.window_s * obj.adc_sr * 60); % convert back to samples
+                    sonogram = mic(win(1):win(2));
+                    obj.sonogram = sonogram - mean(sonogram);
+                end
+                
+                amp_x = obj.window_s * 60 * entry.amplifier_sampling_rate;
                 sTs = entry.spike_timestamps; % query value
-                obj.cells(keys{i}) = sTs(sTs > amp_x(1) & sTs < amp_x(2)); % only get within this window
-            end
+                
+                % Hash cell_keys into unique cell keys
+%                 cell_keys{i} = [cell_keys{i} ' ' num2str(window_s')];                
+                % only get within this window and normalize
+                obj.cells(cell_keys{i}) = ...
+                    sTs(sTs > amp_x(1) & sTs < amp_x(2)) - amp_x(1); 
+            end            
         end
     end
 end
