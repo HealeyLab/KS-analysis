@@ -148,8 +148,9 @@ function fig_out = get_song_activity(obj, key, only)
             % except for the first, that's the basis
             % currently assuming all syllables are not single...
                 lagDiff = 0;
+                curr_syl = curr_syls(j);
+
                 if j > 1 % if not the basis syllable,
-                    curr_syl = curr_syls(j);
                     [co, lag] = xcorr(basis_syl.sonogram, curr_syl.sonogram); 
                     [~,I] = max((co));
                     lagDiff = lag(I); % is the difference in start of signal between orignial .wav and in TTL envelope
@@ -160,26 +161,20 @@ function fig_out = get_song_activity(obj, key, only)
                 
                 % align all syllables to the basis syllable
                 syl_cells = curr_syl.cells;
-                syl_cells_keys = syl_cells.keys;    
                 % redundantly assigned for now
                 subplot(212)
                 sylscells = [length(curr_syls) length(syl_cells)];
-                for k = 1:length(syl_cells_keys)                   
+                for k = 1:length(syl_cells)                   
                     %% for each cell of that syllable:
                     % adjust
-                    cell_sTs = syl_cells(syl_cells_keys{k}); % get cell sTs
+                    cell_sTs = syl_cells{k}; % get cell sTs
                     cell_sTs = cell_sTs + lagDiff; 
                     
                     % now plot the cell rasters
                     for m = 1:length(cell_sTs)
                         %% for each spike of that cell:
-                        % TODO: is this actually plotting different
-                        % syllables?
-                        % TODO: how are the rasters aligned without
-                        % termporal normalization? (ie, subtracting by a
-                        % start point
-                        y = sylscells(1) * (k-1) + j; % num syllables times cellind norm + cur syl ind
-                        rasterRow(cell_sTs(m), y, obj.get_color(obj.db(syl_cells_keys{k}))); 
+                        y = length(curr_syls) * (k-1) + j; % num syllables times cellind norm + cur syl ind
+                        rasterRow(cell_sTs(m), y, obj.get_color(obj.db(curr_syl.cell_keys{k}))); 
                     end
                 end
             end

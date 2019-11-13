@@ -9,7 +9,8 @@ classdef syllable
     properties (SetAccess = immutable)
         dbh;
         window_s;
-        cells = containers.Map('KeyType','char','ValueType', 'any');
+        cells     = {};
+        cell_keys = {}; % for cross referencing the order
         id = ''
         sonogram;
         adc_sr;
@@ -23,6 +24,7 @@ classdef syllable
             obj.dbh = dbh;
             obj.window_s = window_s; % x(1) and x(2)
             obj.id = id;
+            obj.cell_keys = cell_keys;
             % uses the keyhash to grab the spiketrain, and narrows down
             % only the spikes that happen during the syllable, using the
             % window_s's timestamps.
@@ -46,10 +48,8 @@ classdef syllable
                 amp_x = obj.window_s * 60 * entry.amplifier_sampling_rate;
                 sTs = entry.spike_timestamps; % query value
                 
-                % Hash cell_keys into unique cell keys
-%                 cell_keys{i} = [cell_keys{i} ' ' num2str(window_s')];                
                 % only get within this window and normalize
-                obj.cells(cell_keys{i}) = ...
+                obj.cells{i} = ...
                     sTs(sTs > amp_x(1) & sTs < amp_x(2)) - amp_x(1); 
             end            
         end
