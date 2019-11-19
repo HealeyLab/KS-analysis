@@ -1,4 +1,4 @@
-function waveform_connector(obj, habit_key, song_key)
+function [habit_fam, song_fam, pairs] = waveform_connector(obj, habit_key, song_key)
 %WAVEFORM_CONNECTOR Allows you to take a day of habituation and song and
 %connect their respective waveforms
 %   Detailed explanation goes here.
@@ -67,10 +67,14 @@ while ~done
 end
 
 for i=1:length(pairs)
-    habit_key = habit_cell(pairs{i}(1));
-    obj.get_song_syllable_activity(habit_key, 1); % the one means only that cell
+    habit_key = char(habit_cell(pairs{i}(1)));
+    obj.gen_playback_syllable_PSTHs(habit_key);
+    obj.generate_figures(habit_key);
+    
     song_key  = song_cell(pairs{i}(1));
-    obj.gen_playback_syllable_PSTHs(song_key);
+    obj.get_song_syllable_activity(song_key, 1); % the one means only that cell
+
+    
 end
 end
 
