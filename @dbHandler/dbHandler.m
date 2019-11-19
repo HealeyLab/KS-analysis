@@ -35,10 +35,10 @@ classdef dbHandler
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mde'};
         
         
-        BB = [0 63 92] / 255;
+        BB = [0 0 255] / 255;
         BN = [87 82 126] / 255; 
         NB = [157 99 136] / 255;
-        NN = [209 127 127] / 255;
+        NN = [255 0 0] / 255;
     end
     methods 
         function obj = dbHandler()

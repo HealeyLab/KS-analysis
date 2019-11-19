@@ -9,7 +9,7 @@ function vec = scatter(obj)
     if ~exist('vec', 'var')
         vec=[];
         db = obj.db;
-        keys = obj.get_keys('&'); % using & as a pattern excludes the auxiliary entries
+        keys = obj.get_keys('&', 'trial'); % using & as a pattern excludes the auxiliary entries
         for key_ind = 1:length(keys)
             key = keys{key_ind};
             s = db(key);
@@ -35,8 +35,15 @@ function vec = scatter(obj)
                     total_spikes = NaN; total_time = NaN;
                 end
                 [~, id_num] = obj.get_subject_id(key);
+                
+                %      1          2              3
                 vec = [vec; obj.get_p2p(s) obj.get_sym(s)...
-                    total_spikes/total_time s.depth obj.get_time_of_day(key) id_num];
+                %             4                 5
+                    total_spikes/total_time s.depth...
+                %             5                    6
+                    obj.get_time_of_day(key) id_num];
+                
+                
                 disp([num2str(length(vec)) ' ' key])
             end
         end
@@ -91,11 +98,13 @@ function vec = scatter(obj)
     title('FR vs time of day');
     xlabel('time (hr)')
     ylabel('Evoked Fr (Hz)')    
-    %% p2p vs sym vs fr
-    subplot(3,2,6)
-    scatter3(vec(:,1), vec(:,2), vec(:,3), 'jitter', 'on')
-    title('p2p vs symmetry vs evoked fr')
-    xlabel('p2p')
-    ylabel('symmetry')
-    zlabel('evoked fr (Hz)')
+    %% stuff vs hemisphere
+    
+    %     %% p2p vs sym vs fr
+%     subplot(3,2,6)
+%     scatter3(vec(:,1), vec(:,2), vec(:,3), 'jitter', 'on')
+%     title('p2p vs symmetry vs evoked fr')
+%     xlabel('p2p')
+%     ylabel('symmetry')
+%     zlabel('evoked fr (Hz)')
 end

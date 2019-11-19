@@ -7,7 +7,6 @@ classdef syllable
     %                    key            : keyhash for that cell
     
     properties (SetAccess = immutable)
-        dbh;
         window_s;
         cells     = {};
         cell_keys = {}; % for cross referencing the order
@@ -18,10 +17,9 @@ classdef syllable
     end
     
     methods
-        function obj = syllable(dbh, window_s, cell_keys, id)
+        function obj = syllable(dbh, window_s, cell_keys, id, varargin)
             %SYLLABLE Construct an instance of this class
             % keys is a cell array of keyhashes    
-            obj.dbh = dbh;
             obj.window_s = window_s; % x(1) and x(2)
             obj.id = id;
             obj.cell_keys = cell_keys;
@@ -51,6 +49,10 @@ classdef syllable
                 % only get within this window and normalize
                 obj.cells{i} = ...
                     sTs(sTs > amp_x(1) & sTs < amp_x(2)) - amp_x(1); 
+                
+                if exist(varargin, 'var')
+                    obj.sonogram = varargin{1};
+                end
             end            
         end
     end

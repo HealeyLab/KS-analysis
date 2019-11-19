@@ -1,14 +1,20 @@
-function fig_out = get_song_activity(obj, key, only)
+function fig_out = get_song_syllable_activity(obj, key, only)
     % NOTE: to go fast, toggle the fields with the TAB key.
     % add components
 
     hs = addcomponents;
     show_spectrogram(key);
     syl_arr = [];
-    function hs = addcomponents                                             %   [from_left from_bottom width height]        
+    function hs = addcomponents    %   [from_left from_bottom width height]        
         
         hs.fig = figure('Visible', 'on', 'Tag', 'fig', 'Units', 'Normalized', 'Position', [0.01 0.2 .95 .7]);
         fig_out = hs.fig;
+        
+        hs.Intro = uicontrol(hs.fig,...
+            'Style', 'pushbutton','Units', 'Normalized',...
+            'Position',[0.01, 0.02 0.06 0.04],...
+            'String','Intro', 'UserData', [],...
+            'Callback', @make_Intro, 'Tag', 'open');
         hs.A =  uicontrol(hs.fig,...
             'Style', 'pushbutton','Units', 'Normalized',...
             'Position',[0.06, 0.02 0.06 0.04],...
@@ -61,6 +67,10 @@ function fig_out = get_song_activity(obj, key, only)
             'Callback', @make_J, 'Tag', 'open');
         
         %---------------------------------------
+        
+        function make_Intro(hObject,~)
+            hObject.UserData = [hObject.UserData make_syllable('Intro')];
+        end
         function make_A(hObject,~)
             hObject.UserData = [hObject.UserData make_syllable('A')];
         end
@@ -94,8 +104,8 @@ function fig_out = get_song_activity(obj, key, only)
         %---------------------------------
         hs.show = uicontrol(hs.fig,...
             'Units', 'Normalized', 'Style', 'pushbutton',...
-            'Position',[0.9 0.01 0.05  0.04],...
-            'String','Show','Callback', @show,...
+            'Position',[0.9 0.01 0.06  0.04],...
+            'String','show whole','Callback', @show,...
             'Tag', 'show');        
 
         %         [from_left from_bottom width height]
@@ -103,8 +113,14 @@ function fig_out = get_song_activity(obj, key, only)
             'Units', 'Normalized', 'Style', 'pushbutton',...
             'Position',[0.8 0.01 0.08  0.04],...
             'String','show syllables','Callback', @align_syllables,...
-            'Tag', 'show');        
-
+            'Tag', 'show');
+        
+        hs.backspace = uicontrol(hs.fig,...
+            'Units', 'Normalized', 'Style', 'pushbutton',...
+            'Position',[0.8 0.06 0.08  0.04],...
+            'String','backspace','Callback', @backspace,...
+            'Tag', 'show');
+        
         hs.sa = axes('Units','Normalized', 'Position', [0.04 0.45 0.95 0.50]);
         hs.ra = axes('Units','Normalized', 'Position', [0.04 0.15 0.95 0.25]);
     end
@@ -124,19 +140,18 @@ function fig_out = get_song_activity(obj, key, only)
             
             curr_syl = syl_arr(syl_ind);
             if ~isKey(dict, curr_syl.id)
-                dict(curr_syl.id) = [];                
+                dict(curr_syl.id) = [];
             end
             dict(curr_syl.id) = [dict(curr_syl.id) curr_syl];
         end
         % Second, if a syllable id has more than one occurrance, take the
         % first occurrance as the basis, and align all the same syllables
-        % to it
-        % show syllable activity
         % for syllable id in the id,
         dict_keys = dict.keys;
+        figure;
         for i = 1:length(dict_keys)
             sylscells = []; % [rows cells]
-            figure('Position', [300, 100, 300, 300]);
+%             figure('Position', [300, 100, 300, 300]);
             %% for each syllable id:
             curr_syl_id = dict_keys(i); % {'A'}
             curr_syl_id = curr_syl_id{1}; % 'A'
@@ -146,7 +161,6 @@ function fig_out = get_song_activity(obj, key, only)
             for j = 1:length(curr_syls)
             %% for each syllable with that syllable id:
             % except for the first, that's the basis
-            % currently assuming all syllables are not single...
                 lagDiff = 0;
                 curr_syl = curr_syls(j);
 
@@ -156,13 +170,12 @@ function fig_out = get_song_activity(obj, key, only)
                     lagDiff = lag(I); % is the difference in start of signal between orignial .wav and in TTL envelope
                 end
                 
-                subplot(211)
-                plot((1:length(curr_syl.sonogram))+lagDiff, curr_syl.sonogram); hold on
+%                 subplot(...)
+%                 plot((1:length(curr_syl.sonogram))+lagDiff, curr_syl.sonogram); hold on
                 
                 % align all syllables to the basis syllable
                 syl_cells = curr_syl.cells;
-                % redundantly assigned for now
-                subplot(212)
+                subplot(2, length(dict), length(dict)+i);
                 sylscells = [length(curr_syls) length(syl_cells)];
                 for k = 1:length(syl_cells)                   
                     %% for each cell of that syllable:
@@ -179,13 +192,14 @@ function fig_out = get_song_activity(obj, key, only)
                 end
             end
             SpectXlim = xlim / curr_syl.adc_sr * curr_syl.amplifier_sr; 
-            cla(subplot(211));
+%             cla(subplot(2,length(dict),i));
+            subplot(2,length(dict),i)
             spectrogram(basis_syl.sonogram, 256, [],[], basis_syl.adc_sr, 'yaxis');
             colorbar('delete');
             title(dict_keys{i}); % give it a title
             
             % convert to amplifier sampling rate (for neurons)
-            subplot(212)
+            subplot(2,length(dict),length(dict) + i)
             xlim(SpectXlim)
             ylim([1 length(curr_syl.cells)*length(curr_syls)+1])
             % shade figure
@@ -279,9 +293,11 @@ function fig_out = get_song_activity(obj, key, only)
         text(hs.sa, x(1), 12, id, 'FontSize', 18);
         
         % get spiketrains
-        i=0;
         keys = get_keys();
         curr_syl = syllable(obj, x, keys, id);
         syl_arr = [syl_arr curr_syl];
+    end
+    function backspace(~,~)
+        syl_arr(length(syl_arr)) = [];
     end
 end
