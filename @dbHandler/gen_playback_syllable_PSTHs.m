@@ -1,20 +1,30 @@
-function fig_out = gen_playback_syllable_PSTHs(obj, key)
-%% generate syllable activity for each subject...
+function all_sTs = gen_playback_syllable_PSTHs(obj, key)
+%% GEN_PLAYBACK_SYLLABLE_PSYTHs
+% The output of this function is a heirarchichal database struct whos fields are named after each
+% song type. The value for each field is the cell_sTs for 
+
 % key = 'mde 10 13 19 habituation_191013_173207_Kilosort&152&13&good'; % obj.get_keys(subject, '_syllables'); % using & as a pattern excludes the auxiliary entries
-dbh_keys = {key}; % dbh.get_key_family(seed_key);
-num_cells = length(dbh_keys);
-[subject,~] = obj.get_subject(key);
+obj_keys = {key}; % obj.get_key_family(seed_key);
+num_cells = length(obj_keys); % always 1
+[subject,~] = obj.get_subject_id(key);
 
 %%
 syllable_key = [subject '_playback_syllables'];
-subject_songs = dbh.db(syllable_key);
+subject_songs = obj.db(syllable_key);
 fn = fieldnames(subject_songs);
 
-[on, off, ~] = dbh.get_stim_on_off(key);
-stim_identities = dbh.db(key).stim_identities{1};
+[on, off, ~] = obj.get_stim_on_off(key);
+stim_identities = obj.db(key).stim_identities{1};
 
+% FOR OUTPUT
+all_sTs = struct;
+% FOR OUTPUT
 %% for each type of song (BOS, CON, BOS-REV)...
 for song_index = 1:length(fn)
+    % FOR OUTPUT
+    all_sTs.(fn{song_index}) = struct;
+    % FOR OUTPUT
+    
      [cur_wav, fs] = audioread(fullfile(...
          ['C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son ' subject],...
          [fn{song_index} '.wav']));
@@ -34,16 +44,22 @@ for song_index = 1:length(fn)
     % first occurrance as the basis, and align all the same syllables
     % for syllable id in the id,
     dict_keys = syllable_dict.keys;
-    figure;
+    fig_out = figure;
     title(strrep(fn{song_index},'_', ' '));
     for i = 1:length(dict_keys)
+        
         %% for each syllable id:
         curr_syl_id = dict_keys(i); % {'A'}
         curr_syl_id = curr_syl_id{1}; % 'A'
+        
         syls_in_curr_type_of_song = syllable_dict(curr_syl_id); % syllables with the 'A' id
 
         basis_syl = syls_in_curr_type_of_song(1);
         basis_syl_sonogram = get_sonogram(cur_wav, fs, basis_syl);
+        
+        % FOR OUTPUT
+        all_sTs.(fn{song_index}).(curr_syl_id) = {};
+        % FOR OUTPUT
         for j = 1:length(syls_in_curr_type_of_song)
         %% for each syllable with that syllable id:
         % except for the first, that's the basis
@@ -61,7 +77,7 @@ for song_index = 1:length(fn)
 
             % align all syllable-evoked activity to the basis syllable
             subplot(2, length(syllable_dict), length(syllable_dict)+i);
-            for k = 1:num_cells % aka length(dbh_keys)           
+            for k = 1:num_cells % aka length(obj_keys)           
                 %% for each cell of that syllable:
                 % % to test that it works:
                 % plot(board_adc(1,:))
@@ -69,8 +85,8 @@ for song_index = 1:length(fn)
                 % for ind = 1:length(song)
                 %     plot(song(ind).window_s(1)*30000+on_(1), .1, 'r*')
                 % end
-                total_sTs = dbh.db(dbh_keys{k}).spike_timestamps;
-                          % dbh.db(dbh_keys{i}).stim_timestamps;
+                total_sTs = obj.db(obj_keys{k}).spike_timestamps;
+                          % obj.db(obj_keys{i}).stim_timestamps;
                 % timestamp of each stimulus of the current song type
                 on_   = on(contains(stim_identities,[fn{song_index} '.wav']));
                 off_ = off(contains(stim_identities,[fn{song_index} '.wav']));
@@ -90,14 +106,19 @@ for song_index = 1:length(fn)
                     % for each song rendition,
                     
                     % Each syllable presented
-                    amp = sort(curr_syl.window_s * dbh.db(dbh_keys{k}).amplifier_sampling_rate); % convert to samples. not multiplying by 60 as I have elsewhere
+                    amp = sort(curr_syl.window_s * obj.db(obj_keys{k}).amplifier_sampling_rate); % convert to samples. not multiplying by 60 as I have elsewhere
                     cs = curr_sTs{m};
                     curr_sTs{m} = cs(...
                           curr_sTs{m} > amp(1)...
                         & curr_sTs{m} < amp(2));
                     curr_sTs{m} = curr_sTs{m} - amp(1);
-                    curr_sTs{m} = curr_sTs{m} - lagDiff;
+                    curr_sTs{m} = curr_sTs{m} + lagDiff;
+                    curr_sTs{m} = curr_sTs{m} - 0.040 * obj.db(obj_keys{k}).amplifier_sampling_rate; 
                 end
+                
+                % FOR OUTPUT
+                all_sTs.(fn{song_index}).(curr_syl_id) = [all_sTs.(fn{song_index}).(curr_syl_id); curr_sTs];
+                % FOR OUTPUT
                 
                 % now plot the cell rasters
                 for row_ind = 1:length(curr_sTs)
@@ -108,12 +129,12 @@ for song_index = 1:length(fn)
                         % length(On_) is the total number of syllable
                         % presentations
                         y = (j-1) * length(on_) + (row_ind);
-                        rasterRow(row(sTs_ind), y, dbh.get_color(dbh.db(dbh_keys{k}))); 
+                        rasterRow(row(sTs_ind), y, obj.get_color(obj.db(obj_keys{k}))); 
                     end
                 end
             end
         end
-        SpectXlim = xlim / fs * dbh.db(dbh_keys{k}).amplifier_sampling_rate; 
+        SpectXlim = xlim / fs * obj.db(obj_keys{k}).amplifier_sampling_rate; 
         cla(subplot(2,length(syllable_dict),i));
         spectrogram(basis_syl_sonogram, 256, [],[], fs, 'yaxis');
         colorbar('delete');

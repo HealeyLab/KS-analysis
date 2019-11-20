@@ -1,10 +1,13 @@
-function fig_out = get_song_syllable_activity(obj, key, only)
+function get_song_syllable_activity(obj, key, only)
     % NOTE: to go fast, toggle the fields with the TAB key.
     % add components
 
     hs = addcomponents;
     show_spectrogram(key);
     syl_arr = [];
+    % FOR OUTPUT
+    song = struct;
+    % FOR OUTPUT
     function hs = addcomponents    %   [from_left from_bottom width height]        
         
         hs.fig = figure('Visible', 'on', 'Tag', 'fig', 'Units', 'Normalized', 'Position', [0.01 0.2 .95 .7]);
@@ -127,7 +130,7 @@ function fig_out = get_song_syllable_activity(obj, key, only)
 
     function keys = get_keys()
         if only
-            keys = key;
+            keys = {key};
         else
             keys = obj.get_key_family(key);
         end
@@ -157,6 +160,10 @@ function fig_out = get_song_syllable_activity(obj, key, only)
             curr_syl_id = curr_syl_id{1}; % 'A'
             curr_syls = dict(curr_syl_id); % syllables with the 'A' id
             
+            % FOR OUTPUT
+            song.(curr_syl_id) = {};
+            % FOR OUTPUT
+            
             basis_syl = curr_syls(1);
             for j = 1:length(curr_syls)
             %% for each syllable with that syllable id:
@@ -182,6 +189,11 @@ function fig_out = get_song_syllable_activity(obj, key, only)
                     % adjust
                     cell_sTs = syl_cells{k}; % get cell sTs
                     cell_sTs = cell_sTs + lagDiff; 
+                    cell_sTs = cell_sTs - 0.040 * curr_syl.amplifier_sr;
+                    
+                    % FOR OUTPUT
+                    song.(curr_syl_id) = [song.(curr_syl_id); cell_sTs];
+                    % FOR OUTPUT
                     
                     % now plot the cell rasters
                     for m = 1:length(cell_sTs)
@@ -217,6 +229,8 @@ function fig_out = get_song_syllable_activity(obj, key, only)
                 end
             end
         end
+        %% save syl_arr to temp file
+        save('C:\Users\danpo\Documents\song.mat', 'song')
     end
     
     function rasterRow(tStamps, i, color)

@@ -34,7 +34,6 @@ classdef dbHandler
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdd',...
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mde'};
         
-        
         BB = [0 0 255] / 255;
         BN = [87 82 126] / 255; 
         NB = [157 99 136] / 255;
@@ -59,12 +58,12 @@ classdef dbHandler
         function figs = generate_figures(obj, key_pattern)
             % return a list of figs that can ust be deleted real easily
             figs = [];
-            keys = obj.show_keys(key_pattern);
+            keys = obj.get_keys(key_pattern);
             for i = 1:length(keys)
                 key = keys{i};
                 s = obj.db(key);
                 
-                waveforms = obj.gen_waveforms(key, 1); % 1 means only one
+%                 waveforms = obj.gen_waveforms(key, 1); % 1 means only one
                 figs = [figs waveforms];
                 if  strcmp(s.context, 'song')
                     son = obj.get_song_activity(key, 1); % 1 means only one

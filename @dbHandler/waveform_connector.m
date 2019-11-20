@@ -1,4 +1,4 @@
-function [habit_fam, song_fam, pairs] = waveform_connector(obj, habit_key, song_key)
+function [habit_fam, song_fam, pairs, latency_db] = waveform_connector(obj, habit_key, song_key)
 %WAVEFORM_CONNECTOR Allows you to take a day of habituation and song and
 %connect their respective waveforms
 %   Detailed explanation goes here.
@@ -21,12 +21,13 @@ song_fam  = obj.get_key_family(song_key);
         % this value adjusts the axis position for plotting below. 
         % It's either zero (top) or length(fam), which puts it below.
         if above
-            row  = 0; 
+            row  = 0;
             label = 'habit';
         else
             row = length(fam);
             label = 'song';
         end
+        
         % now use these indices to re-arrange the original fam
         for sort_ind = 1:length(fam)
             
@@ -67,14 +68,31 @@ while ~done
 end
 
 for i=1:length(pairs)
+    % habit data
     habit_key = char(habit_cell(pairs{i}(1)));
-    obj.gen_playback_syllable_PSTHs(habit_key);
-    obj.generate_figures(habit_key);
+    struct_sTs = obj.gen_playback_syllable_PSTHs(habit_key);
+%     obj.generate_figures(habit_key);
     
-    song_key  = song_cell(pairs{i}(1));
-    obj.get_song_syllable_activity(song_key, 1); % the one means only that cell
-
+    % song data
+    song_key  = char(song_cell(pairs{i}(1)));
+    obj.get_song_syllable_activity(song_key, 1); % the one means only that cell   
+    input('press enter once youve set the song_syllables','s')
+    song_sTs = load('C:\Users\danpo\Documents\song.mat');
+    struct_sTs.song = song_sTs.song;
     
+    %% add it to the database
+    habit_key = strsplit(habit_key, '_');
+    habit_key = strjoin({habit_key{2:end}},'_');
+    song_key = strsplit(song_key, '_');
+    song_key = strjoin({song_key{2:end}}, '_');
+    
+    latency_db_key = [habit_key '+' song_key];
+    latency_db_key = strrep(latency_db_key, '&', '_'); % ampersands not allowed as field names
+    latency_db_key = erase(latency_db_key, 'Kilosort'); % need to shorten it
+    latency_db_key = matlab.lang.makeValidName(latency_db_key);
+    % initialize as struct so you can call it another field deep later
+    latency_db.(latency_db_key) = struct_sTs;
+    save('C:\Users\danpo\Documents\syl_arr.mat', 'latency_db');    
 end
 end
 

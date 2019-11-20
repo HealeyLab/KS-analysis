@@ -20,7 +20,7 @@ classdef syllable
         function obj = syllable(dbh, window_s, cell_keys, id, varargin)
             %SYLLABLE Construct an instance of this class
             % keys is a cell array of keyhashes    
-            obj.window_s = window_s; % x(1) and x(2)
+            obj.window_s = sort(window_s); % x(1) and x(2)
             obj.id = id;
             obj.cell_keys = cell_keys;
             % uses the keyhash to grab the spiketrain, and narrows down

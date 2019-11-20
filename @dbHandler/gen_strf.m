@@ -1,6 +1,6 @@
 function [fig_out] = gen_strf(obj, key_pattern)
 
-keys = obj.show_keys(key_pattern);
+keys = obj.get_keys(key_pattern);
 for key_inds = 1:length(keys)
     key = keys{key_inds};
     s = obj.db(key);

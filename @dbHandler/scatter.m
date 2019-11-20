@@ -36,16 +36,13 @@ function vec = scatter(obj)
                 end
                 [~, id_num] = obj.get_subject_id(key);
                 
-                %      1          2              3
-                vec = [vec; obj.get_p2p(s) obj.get_sym(s)...
-                %             4                 5
-                    total_spikes/total_time s.depth...
-                %             5                    6
-                    obj.get_time_of_day(key) id_num];
+                %                   1              2              3                  4                     5           6
+                vec = [vec; obj.get_p2p(s) obj.get_sym(s) total_spikes/total_time s.depth   obj.get_time_of_day(key) id_num];
                 
-                
-                disp([num2str(length(vec)) ' ' key])
+                disp([num2str(length(vec)) ' ' key])    
             end
+            
+
         end
     end
     %% show kmeans for p2p vs sym
