@@ -127,7 +127,6 @@ function get_song_syllable_activity(obj, key, only)
         hs.sa = axes('Units','Normalized', 'Position', [0.04 0.45 0.95 0.50]);
         hs.ra = axes('Units','Normalized', 'Position', [0.04 0.15 0.95 0.25]);
     end
-
     function keys = get_keys()
         if only
             keys = {key};
@@ -135,7 +134,6 @@ function get_song_syllable_activity(obj, key, only)
             keys = obj.get_key_family(key);
         end
     end
-
     function align_syllables(~,~)
         % First, organize the syllables according to syllable id
         dict = containers.Map('KeyType','char','ValueType', 'any');
@@ -160,10 +158,6 @@ function get_song_syllable_activity(obj, key, only)
             curr_syl_id = curr_syl_id{1}; % 'A'
             curr_syls = dict(curr_syl_id); % syllables with the 'A' id
             
-            % FOR OUTPUT
-            song.(curr_syl_id) = {};
-            % FOR OUTPUT
-            
             basis_syl = curr_syls(1);
             for j = 1:length(curr_syls)
             %% for each syllable with that syllable id:
@@ -184,6 +178,23 @@ function get_song_syllable_activity(obj, key, only)
                 syl_cells = curr_syl.cells;
                 subplot(2, length(dict), length(dict)+i);
                 sylscells = [length(curr_syls) length(syl_cells)];
+                
+                % FOR OUTPUT
+                if j == 1
+                    % because if it's the first iteration, then hasn't been
+                    % initialized. Needs to be initialized to something to
+                    % assign it a value. Weird struct rule.
+                    for k = 1:length(syl_cells)
+                        % this is ugly, I'm replacing the ampersands and spaces
+                        % with underscores to initialize all fields as structs.
+                        % Love is war.
+                        song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_')) = struct;
+                        song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_'))...
+                            .(curr_syl_id) = {};
+                    end
+                end
+                % FOR OUTPUT
+                
                 for k = 1:length(syl_cells)                   
                     %% for each cell of that syllable:
                     % adjust
@@ -192,7 +203,9 @@ function get_song_syllable_activity(obj, key, only)
                     cell_sTs = cell_sTs - 0.040 * curr_syl.amplifier_sr;
                     
                     % FOR OUTPUT
-                    song.(curr_syl_id) = [song.(curr_syl_id); cell_sTs];
+                    song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_'))...
+                        .(curr_syl_id)...
+                        = [song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_')).(curr_syl_id); cell_sTs];
                     % FOR OUTPUT
                     
                     % now plot the cell rasters
@@ -232,7 +245,6 @@ function get_song_syllable_activity(obj, key, only)
         %% save syl_arr to temp file
         save('C:\Users\danpo\Documents\song.mat', 'song')
     end
-    
     function rasterRow(tStamps, i, color)
         line([floor(tStamps),floor(tStamps)], [i, i+1], 'Color', color);
     end

@@ -63,22 +63,29 @@ while ~done
         done = true;
     else
         user_in = strsplit(user_in, ' ');
+        % user_in: first is habit, second is song
         pairs{length(pairs) + 1} = [str2num(user_in{1}) str2num(user_in{2})];
     end
 end
-
+%% song data
+% DO NOT PUSH THIS TO GITHUB, the original is all I have to fall back on
+song_key  = char(song_cell(pairs{1}(1)));
+obj.get_song_syllable_activity(song_key, 0); % the one means only that cell, zero means all cells   
+input('press enter once youve set the song_syllables','s')
+song_sTs = load('C:\Users\danpo\Documents\song.mat'); % song_sTs.song
+% Both this function and get_song_syllable_activity use get_key_family.
+latency_db = load('C:\Users\danpo\Documents\latency_db.mat');
 for i=1:length(pairs)
-    % habit data
-    habit_key = char(habit_cell(pairs{i}(1)));
-    struct_sTs = obj.gen_playback_syllable_PSTHs(habit_key);
-%     obj.generate_figures(habit_key);
+    %% habit data
+    habit_key = char(habit_cell(pairs{i}(1))); % 1 corresponds to habit_cell
+    struct_sTs = obj.gen_playback_syllable_PSTHs(habit_key); 
     
-    % song data
-    song_key  = char(song_cell(pairs{i}(1)));
-    obj.get_song_syllable_activity(song_key, 1); % the one means only that cell   
-    input('press enter once youve set the song_syllables','s')
-    song_sTs = load('C:\Users\danpo\Documents\song.mat');
-    struct_sTs.song = song_sTs.song;
+    %% find the song_sTs field that best matches song_key
+    song_key = char(song_cell(pairs{i}(2))); % 2 corresponds to song
+    song_key_rep = strrep(strrep(song_key, ' ', '_'), '&', '_');
+    fields = fieldnames(song_sTs.song);
+    field = fields{find(strcmp(fieldnames(song_sTs.song), song_key_rep))};
+    struct_sTs.song = song_sTs.song.(field);
     
     %% add it to the database
     habit_key = strsplit(habit_key, '_');
@@ -92,11 +99,6 @@ for i=1:length(pairs)
     latency_db_key = matlab.lang.makeValidName(latency_db_key);
     % initialize as struct so you can call it another field deep later
     latency_db.(latency_db_key) = struct_sTs;
-    save('C:\Users\danpo\Documents\syl_arr.mat', 'latency_db');    
+    save('C:\Users\danpo\Documents\latency_db.mat', 'latency_db');    
 end
 end
-
-
-
-
-
