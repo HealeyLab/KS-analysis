@@ -13,7 +13,7 @@ The current version of the KiloSort spike-sorting script filters and saves your 
 #### dbHandler.getWaveFormsDriver
 Uses a the cortex-lab's Spikes repository (which should be installed) to grab waveforms from your spike data. Make sure you are in the Kilosort folder when you run this.
 
-### dbHandler.get_keys(obj, pattern, exclude)
+#### dbHandler.get_keys(obj, pattern, exclude)
 Returns the keys that match the pattern (all if no parameters given)
 
 #### dbHandler.get_key_family(obj, key)
