@@ -68,13 +68,13 @@ while ~done
     end
 end
 %% song data
-% DO NOT PUSH THIS TO GITHUB, the original is all I have to fall back on
 song_key  = char(song_cell(pairs{1}(1)));
 obj.get_song_syllable_activity(song_key, 0); % the one means only that cell, zero means all cells   
 input('press enter once youve set the song_syllables','s')
 song_sTs = load('C:\Users\danpo\Documents\song.mat'); % song_sTs.song
 % Both this function and get_song_syllable_activity use get_key_family.
 latency_db = load('C:\Users\danpo\Documents\latency_db.mat');
+latency_db = latency_db.latency_db;
 for i=1:length(pairs)
     %% habit data
     habit_key = char(habit_cell(pairs{i}(1))); % 1 corresponds to habit_cell

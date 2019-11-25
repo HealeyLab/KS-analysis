@@ -3,7 +3,8 @@ function waveform_analysis(obj)
     wf_keys = {};
     for i = 1:length(keys)
         s = obj.db(keys{i});
-        if s.for_wf_analysis
+        if isfield(s, 'for_wf_analysis') && s.for_wf_analysis
+            s.wf_analysis_include = 0;
             wf_keys{length(wf_keys) + 1} = keys{i};
         end
     end
@@ -24,11 +25,11 @@ function waveform_analysis(obj)
     progress = uicontrol('Style', 'text', 'String', '',...
                 'Tag', 'progress','Position', [315, 170, 70, 25]);
 
-    good    = uicontrol('Style','pushbutton', 'String','Good',...
-                 'Position',[315,140,70,25], 'Callback',@good_Callback);
+    good    = uicontrol('Style','pushbutton', 'String','Include',...
+                 'Position',[315,140,70,25], 'Callback',@include_Callback);
 
-    bad    = uicontrol('Style','pushbutton','String','Bad',...
-                 'Position',[315,100,70,25], 'Callback',@bad_Callback);
+    bad    = uicontrol('Style','pushbutton','String','Exclude',...
+                 'Position',[315,100,70,25], 'Callback',@exclude_Callback);
 
     next = uicontrol('Style','pushbutton','String','next',...
                  'Position',[315,60,70,25],'Callback', @next_Callback);
@@ -41,7 +42,7 @@ function waveform_analysis(obj)
     psth = uicontrol('Style','pushbutton', 'String', 'PSTH',...
                     'Position', [400, 60, 70, 25],'Callback', @psth_Callback);
 
-    function good_Callback(source,~) 
+    function include_Callback(source,~) 
     % for if is good
         [s,key] = get_s();
         s.wf_analysis_include = 1;
@@ -51,7 +52,7 @@ function waveform_analysis(obj)
         set(status_handle, 'String', 'INCLUDED');                
     end
 
-    function bad_Callback(source,~) 
+    function exclude_Callback(source,~) 
     % for if is bad
         [s, key] = get_s();
         s.wf_analysis_include = 0;
@@ -112,12 +113,14 @@ function waveform_analysis(obj)
         type_handle = findobj(handle, 'Tag', 'progress');
         set(type_handle, 'String', [num2str(count) '/' num2str(length(wf_keys))]);
 
-        [Vmax,Imax] = max(wf_mean);
+        
         [Vmin,Imin] = min(wf_mean);
-        s.p2p = obj.get_p2p(s); % abs(Imax - Imin) / s.amplifier_sampling_rate * 1000 ;
+        [Vmax,Imax] = max(wf_mean(Imin:end));
+        s.p2p = obj.get_p2p(s);
         s.sym = obj.get_sym(s); % abs(Vmax/Vmin);
-        plot(Imax, Vmax, 'm*');
+        plot(Imax+Imin, Vmax, 'm*');
         plot(Imin, Vmin, 'm*');
+        ylim([Vmin*3 Vmax*7])
         hold off;
         obj.db(key) = s;
 

@@ -2,10 +2,10 @@ function keys = get_keys(obj, varargin)
 keycell = obj.db.keys;
 keys = {};
 exclude = 'lorem ipsum dolor'; % certain not to be included
-if ~isempty(varargin)
-    pattern = varargin{1};
-else
+if isempty(varargin)
     keys = obj.db.keys';
+else
+    pattern = varargin{1};
 end
 
 if length(varargin) > 1

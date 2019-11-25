@@ -1,6 +1,7 @@
 %% generate all images
 % dbh = dbHandler();
-wf_keys = dbh.wf_keys;
+
+wf_keys = dbh.get_wf_analysis_keys;
 db = dbh.db;
 
 BB = dbh.BB;
@@ -33,32 +34,15 @@ NN = dbh.NN;
 % title('NB')
 % set(gca, 'fontSize', 30)
 %% 
-habit_arr = cell(length(dbh.wf_keys),2);
-latency_arr = cell(length(dbh.wf_keys),2);
+habit_arr = cell(length(dbh.get_wf_analysis_keys),2);
+latency_arr = cell(length(dbh.get_wf_analysis_keys),2);
 ns = 0;
 bs = 0;
-for i = 1:length(dbh.wf_keys)
+for i = 1:length(wf_keys)
     key = wf_keys{i};
 
     s = db(key);
-    %% waveform
-%     wf_filename = ['C:\Users\danpo\Documents\dbh_imgs\' wf_keys{i} '_wf'];
-%     fig = figure;
-%     wf = s.spike_waveforms;
-%     wf_mean = nanmean(wf,2);
-%     hold on
-%     if s.p2p >= .43
-%         color = BB;
-%     else
-%         color = NN;
-%     end
-%     plot(wf_mean, 'LineWidth', 1.25, 'Color', color);
-%     plot(wf_mean+nanstd(wf')','LineWidth', 1.25, 'Color', color);
-%     plot(wf_mean-nanstd(wf')','LineWidth', 1.25, 'Color', color);  
-%     set(gca, 'XTick', [])
-%     title(['p2p: ' num2str(s.p2p) '            sym: ' num2str(s.sym)])
-%     saveas(fig, wf_filename, 'svg')
-%     close(fig)
+
     %% habituation rate (evoked) (now in FR, minus baseline)
     if isfield(s, 'stim_timestamps')
         if s.p2p >= 0.43
@@ -102,7 +86,11 @@ for i = 1:length(dbh.wf_keys)
                 fr_arr(j,k) = evoked - baseline; % now in FR!
                 % get latency now
                 all_greater = sp_ts(sp_ts >= on(ind));
-                next_greater = all_greater(1);
+                if ~isempty(all_greater)
+                    next_greater = all_greater(1);
+                else
+                    next_greater = NaN;
+                end
                 lat_arr(j,k) = (next_greater-on(ind))/s.amplifier_sampling_rate;
             end
         end
@@ -134,59 +122,59 @@ for i = 1:length(dbh.wf_keys)
 %         close(fig)
     end
    
-    %% psth
-    if 0 %isfield(s, 'stim_timestamps')
-        [on, off, wav_files] = dbh.get_stim_on_off(key);
-
-        % for each class of stim:
-        si = s.stim_identities{1};
-        usi = unique(si);
-        for i = 1:length(usi)
-            % for each stim itself
-            stim_inds = find(strcmp(si,usi{i}));
-            raster_arr = cell(length(stim_inds),1);
-            for j = 1:length(stim_inds)
-                sp_ts = s.spike_timestamps;
-                ind = stim_inds(j);
-                start = on(ind) - 2 * s.amplifier_sampling_rate;
-                stop = off(ind) + 2 * s.amplifier_sampling_rate;
-
-                raster_arr{j} = ((intersect(...
-                    sp_ts(sp_ts > start),...
-                    sp_ts(sp_ts < stop))...
-                    - start) / s.amplifier_sampling_rate)';                        
-            end
-
-            fig = figure('units','normalized','outerposition',[0 0 1 1]);
-            subplot(3,1,1);
-            for k = 1:length(wav_files)
-                if contains(usi{i}, wav_files(k).name)
-                    curr_wav = wav_files(k);
-                end
-            end
-
-            spectrogram(... 
-                [nan(2*s.adc_sampling_rate, 1); curr_wav.data; nan(2*s.adc_sampling_rate, 1)],...
-                256, [],[],s.adc_sampling_rate, 'yaxis')
-            colorbar('delete');
-
-            title([curr_wav.name(1:end-4) '    ' s.context],'FontSize', 24);
-
-            subplot(3,1,2);
-            [xpoints, ~] = plotSpikeRaster(raster_arr,...
-                    'PlotTYpe','vertline', 'XLimForCell', [0 (stop-start)/s.amplifier_sampling_rate]);
-
-            histo_axes = subplot(3,1,3);    
-            bin = 0.010; % bin size in s
-            histogram(histo_axes, xpoints, (0:bin:(stop-start)/s.amplifier_sampling_rate)); % convert ms to s
-            xlim([0, (stop-start)/s.amplifier_sampling_rate])
-            psth_filename = ['C:\Users\danpo\Documents\dbh_imgs\'...
-                key '_psth_' curr_wav.name(1:end-4) '_' s.context];
-            saveas(fig, psth_filename, 'svg')
-%             saveas(fig, [psth_filename '.pdf'])
-            close(fig)
-        end
-    end
+%     %% psth
+%     if 0 %isfield(s, 'stim_timestamps')
+%         [on, off, wav_files] = dbh.get_stim_on_off(key);
+% 
+%         % for each class of stim:
+%         si = s.stim_identities{1};
+%         usi = unique(si);
+%         for i = 1:length(usi)
+%             % for each stim itself
+%             stim_inds = find(strcmp(si,usi{i}));
+%             raster_arr = cell(length(stim_inds),1);
+%             for j = 1:length(stim_inds)
+%                 sp_ts = s.spike_timestamps;
+%                 ind = stim_inds(j);
+%                 start = on(ind) - 2 * s.amplifier_sampling_rate;
+%                 stop = off(ind) + 2 * s.amplifier_sampling_rate;
+% 
+%                 raster_arr{j} = ((intersect(...
+%                     sp_ts(sp_ts > start),...
+%                     sp_ts(sp_ts < stop))...
+%                     - start) / s.amplifier_sampling_rate)';                        
+%             end
+% 
+%             fig = figure('units','normalized','outerposition',[0 0 1 1]);
+%             subplot(3,1,1);
+%             for k = 1:length(wav_files)
+%                 if contains(usi{i}, wav_files(k).name)
+%                     curr_wav = wav_files(k);
+%                 end
+%             end
+% 
+%             spectrogram(... 
+%                 [nan(2*s.adc_sampling_rate, 1); curr_wav.data; nan(2*s.adc_sampling_rate, 1)],...
+%                 256, [],[],s.adc_sampling_rate, 'yaxis')
+%             colorbar('delete');
+% 
+%             title([curr_wav.name(1:end-4) '    ' s.context],'FontSize', 24);
+% 
+%             subplot(3,1,2);
+%             [xpoints, ~] = plotSpikeRaster(raster_arr,...
+%                     'PlotTYpe','vertline', 'XLimForCell', [0 (stop-start)/s.amplifier_sampling_rate]);
+% 
+%             histo_axes = subplot(3,1,3);    
+%             bin = 0.010; % bin size in s
+%             histogram(histo_axes, xpoints, (0:bin:(stop-start)/s.amplifier_sampling_rate)); % convert ms to s
+%             xlim([0, (stop-start)/s.amplifier_sampling_rate])
+%             psth_filename = ['C:\Users\danpo\Documents\dbh_imgs\'...
+%                 key '_psth_' curr_wav.name(1:end-4) '_' s.context];
+%             saveas(fig, psth_filename, 'svg')
+% %             saveas(fig, [psth_filename '.pdf'])
+%             close(fig)
+%         end
+%     end
 end
  %% analyze habit_arr
 habit_arr = habit_arr(~cellfun('isempty', habit_arr));
@@ -290,7 +278,7 @@ usi_leg = {'BOS', 'BOS REV', 'CON', 'WN'};
 for i = 1:4
     ns_curve = squeeze(ns(i,:,:));
     bs_curve = squeeze(bs(i,:,:));
-    yl = max(max([ns_curve; bs_curve]));
+    yl = max(max([ns_curve bs_curve]));
     
     subplot(2,4,i)
     plot(bs_curve, 'Color', BB, 'LineWidth', 1); hold on
@@ -392,34 +380,34 @@ title('First spike latency for each stimulus', 'FontSize', 18)
 %%
 % [BBavg, NNavg, BNavg, NBavg] = dbh.cross_correlograms;
 %
-%% beeswarms
-m = '.';
-f=figure;
-plotSpread({BBavg(:,1), NNavg(:,1), BNavg(:,1), NBavg(:,1),...
-            BBavg(:,2), NNavg(:,2), BNavg(:,2), NBavg(:,2),...
-            BBavg(:,3), NNavg(:,3), BNavg(:,3), NBavg(:,3),...
-            BBavg(:,4), NNavg(:,4), BNavg(:,4), NBavg(:,4)},....
-'xNames', { 'BB','NN','BN','NB',...
-            'BB','NN','BN','NB',...
-            'BB','NN','BN','NB',...
-            'BB','NN','BN','NB'},...
-'distributionColors', {BB, NN, BN, NB,  BB, NN, BN,NB,...
-                       BB, NN, BN, NB,  BB, NN, BN,NB},...
-'distributionMarkers', {m,m,m,m,  m,m,m,m,  m,m,m,m,  m,m,m,m})
-
-% plotSpread({BBavg, NNavg, BNavg, NBavg},....
-% 'xNames', {'B/B','N/N','B/N','N/B'}, 'distributionColors', {BB, NN, BN,NB},...
-% 'distributionMarkers', {m,m,m,m})
-
-ylabel('Expected value (ms)', 'FontSize', 15)
-title('Expected latency across cross-correlations before and after zero', 'FontSize', 15)
-set(findall(f,  'type','line'),'markerSize',12)
-
-for i = 4:4:16
-    line([i + .5 i + .5], [-50, 50],'Color','k')
-end
-
-text(1,25, 'Minimum Left')
-text(5,25, 'Maximum Left')
-text(9,-25, 'Minimum Right')
-text(13,-25, 'Maximum Right')
+% beeswarms
+% m = '.';
+% f=figure;
+% plotSpread({BBavg(:,1), NNavg(:,1), BNavg(:,1), NBavg(:,1),...
+%             BBavg(:,2), NNavg(:,2), BNavg(:,2), NBavg(:,2),...
+%             BBavg(:,3), NNavg(:,3), BNavg(:,3), NBavg(:,3),...
+%             BBavg(:,4), NNavg(:,4), BNavg(:,4), NBavg(:,4)},....
+% 'xNames', { 'BB','NN','BN','NB',...
+%             'BB','NN','BN','NB',...
+%             'BB','NN','BN','NB',...
+%             'BB','NN','BN','NB'},...
+% 'distributionColors', {BB, NN, BN, NB,  BB, NN, BN,NB,...
+%                        BB, NN, BN, NB,  BB, NN, BN,NB},...
+% 'distributionMarkers', {m,m,m,m,  m,m,m,m,  m,m,m,m,  m,m,m,m})
+% 
+% % plotSpread({BBavg, NNavg, BNavg, NBavg},....
+% % 'xNames', {'B/B','N/N','B/N','N/B'}, 'distributionColors', {BB, NN, BN,NB},...
+% % 'distributionMarkers', {m,m,m,m})
+% 
+% ylabel('Expected value (ms)', 'FontSize', 15)
+% title('Expected latency across cross-correlations before and after zero', 'FontSize', 15)
+% set(findall(f,  'type','line'),'markerSize',12)
+% 
+% for i = 4:4:16
+%     line([i + .5 i + .5], [-50, 50],'Color','k')
+% end
+% 
+% text(1,25, 'Minimum Left')
+% text(5,25, 'Maximum Left')
+% text(9,-25, 'Minimum Right')
+% text(13,-25, 'Maximum Right')

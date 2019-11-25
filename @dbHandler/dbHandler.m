@@ -77,12 +77,17 @@ classdef dbHandler
             end
         end
         %%
-        function p2p = get_p2p(~, s)
+        function [p2p] = get_p2p(~, s)
             wf = s.spike_waveforms;
             wf_mean = nanmean(wf,2);
             [~, min_i] = min(wf_mean);
-            [~, max_i] = max(wf_mean);
-            p2p = abs(max_i-min_i) / s.amplifier_sampling_rate * 1000;
+            % note: this method was getting the wrong side of several
+            % waveforms and calling them narrow when they were actually
+            % broad
+            % so, this is going from min_i to end. so the maximum index is
+            % actually the distance from min_i.
+            [~, max_i] = max(wf_mean(min_i:end));  
+            p2p = max_i / s.amplifier_sampling_rate * 1000;
         end
         
         function sym = get_sym(~, s)
