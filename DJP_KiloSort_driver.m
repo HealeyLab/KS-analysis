@@ -1,4 +1,5 @@
 %% Author: DJP
+clear all;
 close all;
 
 %% Conversion
@@ -14,8 +15,10 @@ end
 ts_label = ts_label(1:end-4);
 % if you are aggregating things for cell shape analysis, input depth,
 % otherwise click enter/return
-depth = input('Please enter the depth in microns for aggregate job. Otherwise press enter.\n', 's');% little label at the end to indicated an aggregate sorting job
-dataPath = fullfile(origDataPath,[ts_label '_Kilosort' depth]);
+
+combined = input('is this a combined recording? (''combined'' for yes, enter nothing for no)\n', 's');
+is_32 = input('is this a 32 channel recording? (''1'' for yes, ''0'' for no)');
+dataPath = fullfile(origDataPath,[ts_label '_Kilosort' combined]);
 mkdir(dataPath)
 addpath(dataPath)
 %%
@@ -33,9 +36,15 @@ end
 if iscell(files)
     [~, idx] = sort({filearray.date});
     files = files(idx);
+else % if it's not a cell array, then it's one file, and filearray is nonsense. Let's replace it here.
+    filearray = dir(char(files));
+    files = [1]; % just so the next for loop doesn't go more than once
 end
 
+% make a waitbar!
+f = waitbar(0, 'loading');
 for i=1:length(files)
+    
     read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0);
     % only runs once
     if ~exist('a1', 'var')
@@ -52,15 +61,17 @@ for i=1:length(files)
     datr = flipud(datr);
     datr=datr';
     fwrite(fid1a, datr(:),'int16'); % append to .dat file
-
     %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
     if size(board_adc_data, 1) == 2
         board_adc_data = [NaN(1, size(board_adc_data, 2)); board_adc_data];
     end
     board_adc = [board_adc board_adc_data];
+    
+    waitbar(i/length(files), f, 'loading Intan data')
 end
 
-fclose(fid);
+fclose(fid1a);
+close(f); % close waitbar
 
 adc_sr=frequency_parameters.board_adc_sample_rate;
 save(fullfile(dataPath, 'adc_data'), 'board_adc', 'adc_sr', '-v7.3')
@@ -90,8 +101,11 @@ clear amplifier_channels amplifier_data aux_input_channels aux_input_data ...
 %% Run Kilosort
 % copy master file example and  standard config and then edit them
 working_dir = 'C:\Users\HealeyLab\Documents\DJP\KS-analysis';
-
-ChannelMapFile_orig      = fullfile(working_dir, 'createChannelMapFile.m');
+if is_32 % if is a 32-channel recording
+    ChannelMapFile_orig      = fullfile(working_dir, 'createChannelMapFile32.m');
+else
+    ChannelMapFile_orig      = fullfile(working_dir, 'createChannelMapFile.m');    
+end
 master_file_example_orig = fullfile(working_dir, 'master_file_example_MOVEME.m');
 StandardConfig_orig      = fullfile(working_dir, 'StandardConfig_MOVEME.m');
 
@@ -99,7 +113,11 @@ copyfile(ChannelMapFile_orig,       dataPath)
 copyfile(master_file_example_orig,  dataPath)
 copyfile(StandardConfig_orig,       dataPath)
 
-ChannelMapFile_pasted      = fullfile(dataPath, 'createChannelMapFile.m');
+if is_32
+    ChannelMapFile_pasted      = fullfile(dataPath, 'createChannelMapFile32.m');
+else
+    ChannelMapFile_pasted      = fullfile(dataPath, 'createChannelMapFile.m');
+end
 master_file_example_pasted = fullfile(dataPath, 'master_file_example_MOVEME.m');
 StandardConfig_pasted      = fullfile(dataPath, 'StandardConfig_MOVEME.m');
 
@@ -122,11 +140,12 @@ A{7}  = sprintf('ops.fbinary = ''%s'';', dataFileName); % dataFileName = 'C:\Use
 A{8}  = sprintf('ops.fproc = ''%s'';', fullfile(dataPath,'temp_wh.dat')); % dataPath = 'C:\Users\danpo\Documents\sorting\mdx 10 8 18\'
 A{9}  = sprintf('ops.root = ''%s'';',dataPath);
 A{11} = sprintf('ops.fs = %s;',sample_rate);
-% change 12-14 to nothing if already covered in other thing
-% NOTE: ONLY 16 CHANNELS FOR THESE RECORDINGS
 A{12} = sprintf('ops.NchanTOT = %s;', n_channels_dat);
-A{13} = sprintf('ops.Nchan = %s;', string(16));
-A{14} = sprintf('ops.Nfilt = %s;',  string(str2num(n_channels_dat) * 2));% number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)     		
+
+A{13} = sprintf('ops.Nchan = %s;', string(n_channels_dat));
+A{14} = sprintf('ops.Nfilt = %s;',  string(str2num(n_channels_dat) * 2));% number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)   
+A{15} = sprintf('ops.nNeighPC = %s; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)', n_channels_dat);
+A{16} = sprintf('ops.nNeigh = %s; % visualization only (Phy): number of neighboring templates to retain projections of (16)', n_channels_dat);
 
 A{24} = sprintf('ops.chanMap = ''%s'';',  fullfile(dataPath, 'chanMap.mat'));
 
@@ -201,7 +220,7 @@ fclose('all');
 %% Go
 run(ChannelMapFile_pasted)
 master_file_example_MOVEME
-beep
-pushBulletDriver(strjoin(['done sorting ' pwd]));% at ', string(datetime)]));
+
+pushBulletDriver(strjoin(['done sorting ' string(pwd)]));
 toc
 
