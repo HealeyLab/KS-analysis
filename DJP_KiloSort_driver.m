@@ -1,4 +1,5 @@
 %% Author: DJP
+clear all;
 close all;
 
 %% Conversion
@@ -10,8 +11,17 @@ if iscell(files)
     ts_label = files{1};
 else
     ts_label = files;
+    files = {files};
 end
 ts_label = ts_label(1:end-4);
+% if you are aggregating things for cell shape analysis, input depth,
+% otherwise click enter/return
+
+is_32 = input('is this a 32 channel recording? (''1'' for yes, ''0'' for no )\n');
+is_stereo = input('does the microdrive use stereotrodes? (''1'' for yes, ''0'' for no ) \n')
+% TODO: is_stereo_32 
+    
+    
 dataPath = fullfile(origDataPath,[ts_label '_Kilosort']);
 mkdir(dataPath)
 addpath(dataPath)
@@ -20,38 +30,46 @@ dataFileName = fullfile(dataPath, 'raw_filtered.dat'); % [dataPath '\Kilosort_al
 % saving adc data, too
 board_adc = [];
 % open raw.dat to write
-fid = fopen(dataFileName, 'w'); % open .dat file for writing
+fid1a = fopen(dataFileName, 'w'); % open .dat file for writing
 
 filearray = [];
 for i = 1:length(files)
     filearray = [filearray dir(char(files(i)))];
 end
-
 [~, idx] = sort({filearray.date});
 files = files(idx);
+
+% make a waitbar!
+f = waitbar(0, 'loading');
 for i=1:length(files)
-    read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,files{i}),0);
-%     
-%     % only runs once
-%     if ~exist('a1', 'var')
-%         [b1, a1] = butter(3, 300/frequency_parameters.amplifier_sample_rate*2, 'high');
-%     end
-% 
-%     % filter
-%     dataRAW = amplifier_data';
-%     dataRAW = single(dataRAW);
-% 
-%     datr = filter(b1, a1, dataRAW);
-%     datr = flipud(datr);
-%     datr = filter(b1, a1, datr);
-%     datr = flipud(datr);
-%     datr=datr';
-%     fwrite(fid, datr(:),'int16'); % append to .dat file
+    
+    read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0);
+    % only runs once
+    if ~exist('a1', 'var')
+        [b1, a1] = butter(3, 300/frequency_parameters.amplifier_sample_rate*2, 'high');
+    end
+
+    % filter
+    dataRAW = amplifier_data';
+    dataRAW = single(dataRAW);
+
+    datr = filter(b1, a1, dataRAW);
+    datr = flipud(datr);
+    datr = filter(b1, a1, datr);
+    datr = flipud(datr);
+    datr=datr';
+    fwrite(fid1a, datr(:),'int16'); % append to .dat file
     %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
+    if size(board_adc_data, 1) == 2
+        board_adc_data = [NaN(1, size(board_adc_data, 2)); board_adc_data];
+    end
     board_adc = [board_adc board_adc_data];
+    
+    waitbar(i/length(files), f, 'loading Intan data')
 end
 
-fclose(fid);
+fclose(fid1a);
+close(f); % close waitbar
 
 adc_sr=frequency_parameters.board_adc_sample_rate;
 save(fullfile(dataPath, 'adc_data'), 'board_adc', 'adc_sr', '-v7.3')
@@ -80,9 +98,16 @@ clear amplifier_channels amplifier_data aux_input_channels aux_input_data ...
         t_amplifier t_aux_input t_dig t_supply_voltage
 %% Run Kilosort
 % copy master file example and  standard config and then edit them
-working_dir = 'C:\Users\danpo\Documents\MATLAB\DJP_KiloSort\KS-analysis';
-
-ChannelMapFile_orig      = fullfile(working_dir, 'createChannelMapFile.m');
+working_dir = 'C:\Users\HealeyLab\Documents\DJP\KS-analysis';
+if      is_32 && ~is_stereo % if 32 chan tetrode
+    ChannelMapFile_orig      = fullfile(working_dir, 'createChannelMapFile32.m');
+elseif ~is_32 &&  is_stereo % 16 chan stereotrode
+    ChannelMapFile_orig      = fullfile(working_dir, 'createChannelMapFile16stereo.m');
+elseif  is_32 &&  is_stereo % 32 chan stereotrode
+    % TODO
+elseif ~is_32 && ~is_stereo % 16 chan tetrode
+    ChannelMapFile_orig      = fullfile(working_dir, 'createChannelMapFile.m');    
+end
 master_file_example_orig = fullfile(working_dir, 'master_file_example_MOVEME.m');
 StandardConfig_orig      = fullfile(working_dir, 'StandardConfig_MOVEME.m');
 
@@ -90,7 +115,15 @@ copyfile(ChannelMapFile_orig,       dataPath)
 copyfile(master_file_example_orig,  dataPath)
 copyfile(StandardConfig_orig,       dataPath)
 
-ChannelMapFile_pasted      = fullfile(dataPath, 'createChannelMapFile.m');
+if      is_32 && ~is_stereo % if 32 chan tetrode
+    ChannelMapFile_pasted      = fullfile(dataPath, 'createChannelMapFile32.m');
+elseif ~is_32 &&  is_stereo % 16 chan stereotrode
+    ChannelMapFile_pasted      = fullfile(dataPath, 'createChannelMapFile16stereo.m');
+elseif  is_32 &&  is_stereo % 32 chan stereotrode
+    % TODO
+elseif  ~is_32 && ~is_stereo% 16 chan tetrode
+    ChannelMapFile_pasted      = fullfile(dataPath, 'createChannelMapFile.m');
+end
 master_file_example_pasted = fullfile(dataPath, 'master_file_example_MOVEME.m');
 StandardConfig_pasted      = fullfile(dataPath, 'StandardConfig_MOVEME.m');
 
@@ -107,16 +140,24 @@ while ischar(tline)
 end
 fclose(fid3);
 % Change lines of .m file
-A{1}  = sprintf('ops.GPU=0');
+A{1}  = sprintf('ops.GPU=1;');
+A{2}  = sprintf('ops.parfor=1;');
 A{7}  = sprintf('ops.fbinary = ''%s'';', dataFileName); % dataFileName = 'C:\Users\danpo\Documents\sorting\mdx 10 8 18\filename'
 A{8}  = sprintf('ops.fproc = ''%s'';', fullfile(dataPath,'temp_wh.dat')); % dataPath = 'C:\Users\danpo\Documents\sorting\mdx 10 8 18\'
 A{9}  = sprintf('ops.root = ''%s'';',dataPath);
 A{11} = sprintf('ops.fs = %s;',sample_rate);
-% change 12-14 to nothing if already covered in other thing
-% NOTE: ONLY 16 CHANNELS FOR THESE RECORDINGS
 A{12} = sprintf('ops.NchanTOT = %s;', n_channels_dat);
-A{13} = sprintf('ops.Nchan = %s;', string(16));
-A{14} = sprintf('ops.Nfilt = %s;',  string(str2num(n_channels_dat) * 2));% number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)     		
+
+if is_32
+    num_active_chan = 32;
+else
+    num_active_chan = 16;
+end
+
+A{13} = sprintf('ops.Nchan = %s;', string(num_active_chan)); % it's here. This is ground zero.
+A{14} = sprintf('ops.Nfilt = %s;',  string(str2num(n_channels_dat) * 2));% number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)   
+A{15} = sprintf('ops.nNeighPC = %s; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)', string(12));
+A{16} = sprintf('ops.nNeigh = %s; % visualization only (Phy): number of neighboring templates to retain projections of (16)', string(num_active_chan));
 
 A{24} = sprintf('ops.chanMap = ''%s'';',  fullfile(dataPath, 'chanMap.mat'));
 
@@ -170,6 +211,8 @@ while ischar(tline)
 end
 fclose(fid5);
 % Change lines of .m file
+C{3} = sprintf('addpath(genpath(''C:\\KiloSort-master''))'); % path to LOCAL kilosort folder
+
 C{6} = sprintf('pathToYourConfigFile = ''%s''; ', dataPath);
 % C{24} = sprintf('rez = merge_posthoc2(rez);', dataPath);
 
@@ -187,7 +230,24 @@ fclose(fid5);
 %%
 fclose('all');
 %% Go
+pushBulletDriver(strjoin(['done loading' string(pwd)]));
+
 run(ChannelMapFile_pasted)
-master_file_example_MOVEME
-beep
-pushBulletDriver('done');
+run(master_file_example_pasted) % master_file_example_MOVEME
+%% 
+% % If you run into this error, it's because of the line that changes NChan
+% % in the config file to 32 or 16. It should be dynamic. NChanTOT is
+% % always 32 though. (search 'ground zero' to find it)
+% Error using  + 
+% Matrix dimensions must agree.
+% 
+% Error in preprocessData (line 163)
+%             CC        = CC + (datr' * datr)/NT;
+% 
+% Error in master_file_example_MOVEME (line 19)
+% [rez, DATA, uproj] = preprocessData(ops); % preprocess data and extract spikes for initialization
+%%
+
+pushBulletDriver(strjoin(['done sorting ' string(pwd)]));
+toc
+

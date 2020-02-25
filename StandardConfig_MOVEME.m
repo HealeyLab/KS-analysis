@@ -1,5 +1,5 @@
 ops.GPU                 = 1; % whether to run this code on an Nvidia GPU (much faster, mexGPUall first)		
-ops.parfor              = 0; % whether to use parfor to accelerate some parts of the algorithm		
+ops.parfor              = 1; % whether to use parfor to accelerate some parts of the algorithm		
 ops.verbose             = 1; % whether to print command line progress		
 ops.showfigures         = 1; % whether to plot figures during optimization		
 		
@@ -65,3 +65,5 @@ ops.fracse  = 0.1; % binning step along discriminant axis for posthoc merges (in
 ops.epu     = Inf;		
 		
 ops.ForceMaxRAMforDat   = 20e9; % maximum RAM the algorithm will try to use; on Windows it will autodetect.
+
+ops.CAR		= 1;
