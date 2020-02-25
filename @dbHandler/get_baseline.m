@@ -1,4 +1,4 @@
-function [baseline_sTs] = get_baseline(obj,key, pattern)
+function [avg_fr] = get_baseline(obj,key, pattern)
 %GET_BASELINE Returns the FR for the baseline
 %during the baseline
 %   Detailed explanation goes here
@@ -18,5 +18,6 @@ for i = 1:length(on)
         sp_ts(sp_ts >= (on(i) - window)),...
         sp_ts(sp_ts < on(i) - buffer))) / (net_window / adc_sr);
 end
+avg_fr = cellfun(@(c)c(1), baseline_sTs);
 end
 

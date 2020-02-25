@@ -1,7 +1,8 @@
 function [habit_fam, song_fam, pairs, latency_db] = waveform_connector(obj, habit_key, song_key)
 %WAVEFORM_CONNECTOR Allows you to take a day of habituation and song and
 %connect their respective waveforms
-%   Detailed explanation goes here.
+%   Takes the key families of both input arguments and allows you to
+%   compare each unit from both recordings.
 
 %% Get the key families of both inputs
 habit_fam = obj.get_key_family(habit_key);
@@ -51,8 +52,8 @@ song_fam  = obj.get_key_family(song_key);
         end 
     end
 figure;
-habit_cell = show_by_channel(obj, habit_fam, 0);
-song_cell  = show_by_channel(obj, song_fam, 1);
+habit_cell = show_by_channel(obj, habit_fam, 1);
+song_cell  = show_by_channel(obj, song_fam, 0);
 
 %% Use input to 
 done = false;
@@ -67,19 +68,23 @@ while ~done
         pairs{length(pairs) + 1} = [str2num(user_in{1}) str2num(user_in{2})];
     end
 end
-%% song data
-song_key  = char(song_cell(pairs{1}(1)));
-obj.get_song_syllable_activity(song_key, 0); % the one means only that cell, zero means all cells   
-input('press enter once youve set the song_syllables','s')
-song_sTs = load('C:\Users\danpo\Documents\song.mat'); % song_sTs.song
-% Both this function and get_song_syllable_activity use get_key_family.
-latency_db = load('C:\Users\danpo\Documents\latency_db.mat');
-latency_db = latency_db.latency_db;
+
 for i=1:length(pairs)
     %% habit data
     habit_key = char(habit_cell(pairs{i}(1))); % 1 corresponds to habit_cell
     struct_sTs = obj.gen_playback_syllable_PSTHs(habit_key); 
-    
+    %% song data (just once)
+    % must go after gen_playback_syllable_PSTHs so that you know what the
+    % syllables look like
+    if i == 1
+        song_key  = char(song_cell(pairs{1}(2)));
+        obj.get_song_syllable_activity(song_key, 0); % the one means only that cell, zero means all cells   
+        input('press enter once youve clicked "show syllables"','s')
+        song_sTs = load('C:\Users\danpo\Documents\song.mat'); % song_sTs.song
+        % Both this function and get_song_syllable_activity use get_key_family.
+        latency_db = load('C:\Users\danpo\Documents\latency_db.mat');
+        latency_db = latency_db.latency_db;
+    end
     %% find the song_sTs field that best matches song_key
     song_key = char(song_cell(pairs{i}(2))); % 2 corresponds to song
     song_key_rep = strrep(strrep(song_key, ' ', '_'), '&', '_');
@@ -99,6 +104,8 @@ for i=1:length(pairs)
     latency_db_key = matlab.lang.makeValidName(latency_db_key);
     % initialize as struct so you can call it another field deep later
     latency_db.(latency_db_key) = struct_sTs;
+    disp('saving...')
     save('C:\Users\danpo\Documents\latency_db.mat', 'latency_db');    
+    disp('done saving')
 end
 end

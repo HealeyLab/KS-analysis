@@ -1,20 +1,28 @@
-function fig_out = set_playback_syllables(obj)
+function fig_out = set_playback_syllables(obj, subject)
 %GET_SUBJECT_SYLLABLES Takes syllables from the song recordings from
 %playback experiments
 %   For playback experiments, we need to be able to do syllable-by-syllable
 %   analyses. To do that, I'm going to save the syllables for each
-%   subject's calls in the database under a custom key (just subject name)
+%   subject's calls in the database under a custom key:
+%   dbHander.db(md?_playback_syllables)
 %   
 
-% db key-value pair, where the valye is a struct with fields CON, BOS,...,
+% db key-value pair, where the value is a struct with fields CON, BOS,...,
 % with values for those fields of syllable objects.
 
-subject = 'mda';
-path = 'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mda';
+path = ['C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son ' subject];
+subject_key = [subject '_playback_syllables'];
+
 hs = addcomponents;
 syl_arr = [];
 
-syl_struct = struct;
+% for new keys, this will error out. I just want to be able to overwrite it. Test with mdx
+if isKey(obj.db, subject_key)
+    syl_struct = obj.db(subject_key);
+else
+    syl_struct = struct;
+end
+
 audio_s = obj.get_audio(path);
 for i = 1:length(audio_s)
     curr_s = audio_s(i);
@@ -44,14 +52,13 @@ for i = 1:length(audio_s)
     syl_arr = [];
 end
 
-subject_key = [subject '_playback_syllables'];
 obj.db(subject_key) = syl_struct;
 
 disp('all done')
 
 function show_spectrogram(son, fs, ax)
     % Filter
-    fcutlow = 300; fcuthigh = 12e3;
+    fcutlow = 300; fcuthigh = 9.99e3;
     order = 3;
     [b,a]=butter(order,[fcutlow,fcuthigh]/(fs/2),'bandpass');
     son = filter(b, a, son);son = fliplr(son);

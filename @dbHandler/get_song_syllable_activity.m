@@ -1,6 +1,9 @@
 function get_song_syllable_activity(obj, key, only)
-    % NOTE: to go fast, toggle the fields with the TAB key.
-    % add components
+%%GET_SONG_SYLLABLE_ACTIVITY For directed song recordings, this script is
+%%for taking the timestamps of the syllables in the recorded song.
+% Saves data in a separate database located in Documents/song.mat
+% To go fast, toggle the fields with the TAB key.
+%% add components
 
     hs = addcomponents;
     show_spectrogram(key);
@@ -150,7 +153,7 @@ function get_song_syllable_activity(obj, key, only)
         % for syllable id in the id,
         dict_keys = dict.keys;
         figure;
-        for i = 1:length(dict_keys)
+        for i = 1:length(dict_keys)            
             sylscells = []; % [rows cells]
 %             figure('Position', [300, 100, 300, 300]);
             %% for each syllable id:
@@ -175,37 +178,49 @@ function get_song_syllable_activity(obj, key, only)
 %                 plot((1:length(curr_syl.sonogram))+lagDiff, curr_syl.sonogram); hold on
                 
                 % align all syllables to the basis syllable
-                syl_cells = curr_syl.cells;
+                all_cells = curr_syl.cells;
                 subplot(2, length(dict), length(dict)+i);
-                sylscells = [length(curr_syls) length(syl_cells)];
+                sylscells = [length(curr_syls) length(all_cells)];
                 
                 % FOR OUTPUT
-                if j == 1
+                if j == 1 % if this is the basis syllable
                     % because if it's the first iteration, then hasn't been
                     % initialized. Needs to be initialized to something to
                     % assign it a value. Weird struct rule.
-                    for k = 1:length(syl_cells)
+                    
+                    for k = 1:length(all_cells)
+                        if i == 1
+                            song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_')) = struct;
+                            song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_'))...
+                                .(curr_syl_id) = struct;
+                        end
+                       
                         % this is ugly, I'm replacing the ampersands and spaces
                         % with underscores to initialize all fields as structs.
                         % Love is war.
-                        song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_')) = struct;
                         song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_'))...
-                            .(curr_syl_id) = {};
+                            .(curr_syl_id).sTs = {};
+                        song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_'))...
+                            .(curr_syl_id).window_s = {};
                     end
                 end
                 % FOR OUTPUT
                 
-                for k = 1:length(syl_cells)                   
+                for k = 1:length(all_cells)                   
                     %% for each cell of that syllable:
                     % adjust
-                    cell_sTs = syl_cells{k}; % get cell sTs
+                    cell_sTs = all_cells{k}; % get cell sTs
                     cell_sTs = cell_sTs + lagDiff; 
-                    cell_sTs = cell_sTs - 0.040 * curr_syl.amplifier_sr;
+                    cell_sTs = cell_sTs;
                     
                     % FOR OUTPUT
                     song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_'))...
-                        .(curr_syl_id)...
-                        = [song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_')).(curr_syl_id); cell_sTs];
+                        .(curr_syl_id).sTs...
+                        = [song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_')).(curr_syl_id).sTs; cell_sTs];
+                    song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_'))...
+                        .(curr_syl_id).window_s ...
+                        = [song.(strrep(strrep(curr_syl.cell_keys{k}, ' ', '_'), '&', '_')).(curr_syl_id).window_s; curr_syl.window_s];
+                    
                     % FOR OUTPUT
                     
                     % now plot the cell rasters
@@ -244,6 +259,10 @@ function get_song_syllable_activity(obj, key, only)
         end
         %% save syl_arr to temp file
         save('C:\Users\danpo\Documents\song.mat', 'song')
+        % add syl_arr to obj so you can gen psths later!
+        s = obj.db(key);
+        s.syl_arr = syl_arr;
+        obj.db(key) = s;
     end
     function rasterRow(tStamps, i, color)
         line([floor(tStamps),floor(tStamps)], [i, i+1], 'Color', color);
@@ -262,7 +281,10 @@ function get_song_syllable_activity(obj, key, only)
             axes(hs.ra); xlim(SpectXlim)
 
             % filter timestamps
+            % 
             sTs = entry.spike_timestamps; % query value
+            % bring back in time, align with the audio by subtracting 40 ms
+            sTs = sTs - 0.040 * entry.adc_sampling_rate; 
             sTs = sTs(sTs > SpectXlim(1) & sTs < SpectXlim(2)); % only get within this window
             
             color = obj.get_color(entry);
