@@ -11,6 +11,7 @@ if iscell(files)
     ts_label = files{1};
 else
     ts_label = files;
+    files = {files};
 end
 ts_label = ts_label(1:end-4);
 % if you are aggregating things for cell shape analysis, input depth,
@@ -32,14 +33,8 @@ filearray = [];
 for i = 1:length(files)
     filearray = [filearray dir(char(files(i)))];
 end
-
-if iscell(files)
-    [~, idx] = sort({filearray.date});
-    files = files(idx);
-else % if it's not a cell array, then it's one file, and filearray is nonsense. Let's replace it here.
-    filearray = dir(char(files));
-    files = [1]; % just so the next for loop doesn't go more than once
-end
+[~, idx] = sort({filearray.date});
+files = files(idx);
 
 % make a waitbar!
 f = waitbar(0, 'loading');
@@ -218,6 +213,8 @@ fclose(fid5);
 %%
 fclose('all');
 %% Go
+pushBulletDriver(strjoin(['done loading' string(pwd)]));
+
 run(ChannelMapFile_pasted)
 master_file_example_MOVEME
 
