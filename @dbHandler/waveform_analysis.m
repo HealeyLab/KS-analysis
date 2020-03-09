@@ -1,4 +1,8 @@
 function waveform_analysis(obj)
+%%WAVEFORM_ANALYSIS This is for going through your entire dataset and 
+%%marking each waveform as good or bad. It is your final pass.
+% This opens a GUI to let you increment through each waveform. It displays
+% some statistics about the waveform, including p2p length and symmtry.
     keys = obj.db.keys;
     wf_keys = {};
     for i = 1:length(keys)

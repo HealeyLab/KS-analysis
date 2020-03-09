@@ -1,6 +1,6 @@
 function vec = scatter(obj, varargin)
 %% SCATTER This takes an optional argument so you don't have a compute the vector again
-figure;
+figure('Name', 'scatter');
 % This function deals a lot with whether you are using a particular
 % unit for waveform analysis. Let's get into what that means.
 % for_wf_analysis: is for this kind of analysis, w/o narrowing down
@@ -50,10 +50,10 @@ end
 subplot(3,2,1)
 idx = kmeans(vec(:,1:2), 2, 'MaxIter',100, 'Options', statset('Display','final'), 'Replicates', 5);
 scatter(vec(idx==1,1), vec(idx==1,2), 'MarkerEdgeColor', obj.BB,...
-    'MarkerFaceColor',obj.BB, 'jitter', 'on','jitterAmount', 0.01)
+    'MarkerFaceColor',obj.BB) %, 'jitter', 'on','jitterAmount', 0.01)
 hold on;
 scatter(vec(idx==2,1), vec(idx==2,2), 'MarkerEdgeColor', obj.NN,...
-    'MarkerFaceColor', obj.NN, 'jitter', 'on','jitterAmount', 0.01)
+    'MarkerFaceColor', obj.NN) %, 'jitter', 'on','jitterAmount', 0.01)
 xlabel('peak to peak width (ms)')
 ylabel('symmetry ratio')
 line([0.43 0.43], [0 .7], 'Color', 'k');
@@ -62,7 +62,7 @@ title('BS and NS neuron clustering')
 %% scatter w depth
 subplot(3,2,2)
 %     plotSpread(vec(:,4))
-scatter(vec(:,1), vec(:,4), 'filled','k', 'jitter', 'on', 'jitterAmount', 0.01)
+scatter(vec(:,1), vec(:,4), 'filled','k')%, 'jitter', 'on', 'jitterAmount', 0.01)
 xlabel('peak to peak width (ms)')
 ylabel('depth (um)')
 title('width vs depth')
@@ -82,7 +82,7 @@ end
 catLabels = {'mda','mdb','mdc','mdd','mde','mdx','mdy','mdz'};
 plotSpread(scatcell, 'CategoryLabels', catLabels)
 %     scatter(vec(:,3), vec(:,4), 'filled','m', 'jitter', 'on')
-xlabel('Evoked firing rate (Hz)')
+xlabel('Subject #')
 ylabel('Depth (um)')
 title('Depth vs identity')
 

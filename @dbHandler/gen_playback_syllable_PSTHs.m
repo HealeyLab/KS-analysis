@@ -44,7 +44,7 @@ for song_index = 1:length(fn)
     % first occurrance as the basis, and align all the same syllables
     % for syllable id in the id,
     dict_keys = syllable_dict.keys;
-    fig_out = figure;
+    figure('Name',fn{song_index});
     title(strrep(fn{song_index},'_', ' '));
     for i = 1:length(dict_keys)
         
@@ -86,7 +86,8 @@ for song_index = 1:length(fn)
                 %     plot(song(ind).window_s(1)*30000+on_(1), .1, 'r*')
                 % end
                 total_sTs = obj.db(obj_keys{k}).spike_timestamps;
-                          % obj.db(obj_keys{i}).stim_timestamps;
+                % bring back in time to align with sound
+                total_sTs = total_sTs - 0.040 * obj.db(obj_keys{k}).amplifier_sampling_rate;
                 % timestamp of each stimulus of the current song type
                 on_   = on(contains(stim_identities,[fn{song_index} '.wav']));
                 off_ = off(contains(stim_identities,[fn{song_index} '.wav']));
@@ -113,7 +114,6 @@ for song_index = 1:length(fn)
                         & curr_sTs{m} < amp(2));
                     curr_sTs{m} = curr_sTs{m} - amp(1);
                     curr_sTs{m} = curr_sTs{m} + lagDiff;
-                    curr_sTs{m} = curr_sTs{m} - 0.040 * obj.db(obj_keys{k}).amplifier_sampling_rate; 
                 end
                 
                 % FOR OUTPUT
@@ -145,17 +145,17 @@ for song_index = 1:length(fn)
         xlim(SpectXlim)
         ylim([1 length(on_)*length(syls_in_curr_type_of_song)+1])
         % shade figure
-%         hold on;
-%         for j = 1:length(syls_in_curr_type_of_song) % total number of regions
-%             if mod(j, 2) == 1
-%                 xl = xlim;
-%                 baseval = (j - 1) * length(on_) + 1;
-%                 h = fill([xl(1) xl(2) xl(2) xl(1)],...
-%                     [baseval baseval baseval+length(on_) baseval+length(on_)],...
-%                     [0.9 0.9 0.9], 'LineStyle', 'None'); 
-%                 set(h, 'facealpha', 0.5);
-%             end
-%         end
+        hold on;
+        for j = 1:length(syls_in_curr_type_of_song) % total number of regions
+            if mod(j, 2) == 1
+                xl = xlim;
+                baseval = (j - 1) * length(on_) + 1;
+                h = fill([xl(1) xl(2) xl(2) xl(1)],...
+                    [baseval baseval baseval+length(on_) baseval+length(on_)],...
+                    [0.9 0.9 0.9], 'LineStyle', 'None'); 
+                set(h, 'facealpha', 0.5);
+            end
+        end
     end
 end
     function sonogram = get_sonogram(wav, fs, syl)
@@ -163,7 +163,7 @@ end
         sonogram = wav(window_s(1):window_s(2));
     end
     function rasterRow(tStamps, i, color)
-        line([floor(tStamps),floor(tStamps)], [i, i+1], 'Color', color);
+        line([floor(tStamps),floor(tStamps)], [i, i+1], 'Color', color,'LineWidth',2);
     end
 
 %%

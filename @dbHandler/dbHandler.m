@@ -63,7 +63,7 @@ classdef dbHandler
                 key = keys{i};
                 s = obj.db(key);
                 
-%                 waveforms = obj.gen_waveforms(key, 1); % 1 means only one
+                waveforms = obj.gen_waveforms(key, 1); % 1 means only one
                 figs = [figs waveforms];
                 if  strcmp(s.context, 'song')
                     son = obj.get_song_activity(key, 1); % 1 means only one
@@ -78,8 +78,11 @@ classdef dbHandler
         end
         %%
         function [p2p] = get_p2p(~, s)
+            
             wf = s.spike_waveforms;
             wf_mean = nanmean(wf,2);
+            interpolation_factor = 10;
+            wf_mean = interp(wf_mean, interpolation_factor);
             [~, min_i] = min(wf_mean);
             % note: this method was getting the wrong side of several
             % waveforms and calling them narrow when they were actually
@@ -87,14 +90,17 @@ classdef dbHandler
             % so, this is going from min_i to end. so the maximum index is
             % actually the distance from min_i.
             [~, max_i] = max(wf_mean(min_i:end));  
-            p2p = max_i / s.amplifier_sampling_rate * 1000;
+            p2p = max_i / s.amplifier_sampling_rate / interpolation_factor * 1000;
         end
         
         function sym = get_sym(~, s)
             wf = s.spike_waveforms;
             wf_mean = nanmean(wf,2);
-            [min_v, ~]= min(wf_mean);
-            [max_v, ~] = max(wf_mean);
+            interpolation_factor = 10;
+            wf_mean = interp(wf_mean, interpolation_factor);
+            
+            [min_v, min_i]= min(wf_mean);
+            [max_v, ~] = max(wf_mean(min_i:end));
             our = abs([min_v max_v]);
             sym = abs(min(our) / max(our));
         end
