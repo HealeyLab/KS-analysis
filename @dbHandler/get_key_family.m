@@ -1,4 +1,6 @@
 function keys = get_key_family(obj, keyOrig)
+%%GET_KEY_FAMILY 
+%   This is for 
 key_fam = strsplit(keyOrig, '&');
 key_fam = key_fam{1};
 

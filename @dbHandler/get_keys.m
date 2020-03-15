@@ -1,4 +1,6 @@
 function keys = get_keys(obj, varargin)
+%%GET_KEYS
+%   Returns all keys that match the pattern
 keycell = obj.db.keys;
 keys = {};
 exclude = 'lorem ipsum dolor'; % certain not to be included
