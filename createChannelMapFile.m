@@ -44,7 +44,7 @@ for x=1:number_of_tetrodes
 end
 xcoords = xcoords(:);
 ycoords = kcoords;
-kcoords = logical(kcoords);
+
 save('C:\DATA\Spikes\20150601_chan32_4_900s\chanMap.mat', ...
     'chanMap','connected', 'xcoords', 'ycoords', 'kcoords', 'chanMap0ind', 'fs')
 %%

@@ -18,8 +18,7 @@ ts_label = ts_label(1:end-4);
 % otherwise click enter/return
 
 is_32 = input('is this a 32 channel recording? (''1'' for yes, ''0'' for no )\n');
-is_stereo = input('does the microdrive use stereotrodes? (''1'' for yes, ''0'' for no ) \n')
-% TODO: is_stereo_32 
+is_stereo = input('does the microdrive use stereotrodes? (''1'' for yes, ''0'' for no ) \n');
     
     
 dataPath = fullfile(origDataPath,[ts_label '_Kilosort']);
@@ -66,6 +65,18 @@ for i=1:length(files)
     board_adc = [board_adc board_adc_data];
     
     waitbar(i/length(files), f, 'loading Intan data')
+    
+    if i == 1
+        stdfig = figure;
+        hold on
+        OFFSET = 600;
+        for j = 1:16
+            plot(datr(j,:)+j*OFFSET)
+            for k = 1:8
+                plot(-1* k * std(datr(j,:)) * ones(length(datr(j,:)),1) + j*OFFSET)
+            end
+        end
+    end
 end
 
 fclose(fid1a);
@@ -147,7 +158,16 @@ A{8}  = sprintf('ops.fproc = ''%s'';', fullfile(dataPath,'temp_wh.dat')); % data
 A{9}  = sprintf('ops.root = ''%s'';',dataPath);
 A{11} = sprintf('ops.fs = %s;',sample_rate);
 A{12} = sprintf('ops.NchanTOT = %s;', n_channels_dat);
-
+%% LOW THRESHOLD MODE
+disp('study the stdfig and find a threshold you like')
+waitfor(stdfig)
+thres = input('what do you want the threshold to be?\n','s');
+if strcmp(thres,"")
+    thres = -6;
+end
+A{42} = sprintf('ops.Th               = [%s %s %s];    ', thres);
+A{52} = sprintf('ops.spkTh           = -%s;      ', thres);
+%%
 if is_32
     num_active_chan = 32;
 else
@@ -184,8 +204,17 @@ while ischar(tline)
 end
 fclose(fid4);
 % Change lines of .m file
+B{3} = sprintf('Nchannels = %s;', n_channels_dat);
 B{6} = sprintf('pathToYourConfigFile = ''%s'';', dataPath);
 B{11} = sprintf('fs = %s;', sample_rate);
+if strcmp(n_channels_dat, '16')
+    B{17} = sprintf('connected = logical(ones(16,1));');
+    if is_stereo % if using stereotrodes,
+        B{39} = sprintf('all_stereos = all_stereos-8;');
+    else
+        B{39} = sprintf('all_tetrodes = all_tetrodes-8;');
+    end
+end
 B{48} = sprintf('save(''%s'', ...',  fullfile(dataPath, 'chanMap.mat'));
 
 % Write cell B into .txt
@@ -230,7 +259,6 @@ fclose(fid5);
 %%
 fclose('all');
 %% Go
-pushBulletDriver(strjoin(['done loading' string(pwd)]));
 
 run(ChannelMapFile_pasted)
 run(master_file_example_pasted) % master_file_example_MOVEME
@@ -249,5 +277,6 @@ run(master_file_example_pasted) % master_file_example_MOVEME
 %%
 
 pushBulletDriver(strjoin(['done sorting ' string(pwd)]));
+beep
 toc
 

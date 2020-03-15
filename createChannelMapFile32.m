@@ -1,5 +1,5 @@
 %  create a channel map file
-
+% for 16 channel udrive with tetrodes, all channels on
 Nchannels = 32;
 connected = true(Nchannels, 1);
 chanMap   = 1:Nchannels;
