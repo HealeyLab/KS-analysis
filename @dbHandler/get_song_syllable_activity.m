@@ -315,14 +315,7 @@ function get_song_syllable_activity(obj, key, only)
         adc_sr = entry.adc_sampling_rate;
 
         % Filter
-        fcutlow = 300;
-        fcuthigh = 12e3;
-        order = 3;
-        [b,a]=butter(order,[fcutlow,fcuthigh]/(adc_sr/2),'bandpass');
-        mic = filter(b, a, mic);
-        mic = fliplr(mic);
-        mic = filter(b, a, mic);
-        mic = fliplr(mic);
+        mic = obj.filter_song(mic, adc_sr);
 
         axes(hs.sa);
         spectrogram( mic(end,:), 256, [],[], adc_sr, 'yaxis')

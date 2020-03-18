@@ -109,16 +109,7 @@ function set_song
 %         S = load(fullfile(origDataPath,'adc_data.mat'));
         hObject.UserData = struct('board_adc', board_adc, 'Fs', frequency_parameters.board_adc_sample_rate); % 
         
-        mic = board_adc(end,:);
-        fcutlow = 300;
-        fcuthigh = 9.99e3;
-        order = 3;
-        [b,a]=butter(order,[fcutlow,fcuthigh]/(frequency_parameters.board_adc_sample_rate/2),'bandpass');
-        mic = filter(b, a, mic);
-        mic = fliplr(mic);
-        mic = filter(b, a, mic);
-        mic = fliplr(mic);
-
+        mic = obj.filter_song(board_adc, frequency_parameters.board_adc_sample_rate);
         
         spectrogram(mic, 256, [],[], frequency_parameters.board_adc_sample_rate, 'yaxis')
         colorbar('delete');

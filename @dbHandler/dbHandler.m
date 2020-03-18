@@ -38,6 +38,9 @@ classdef dbHandler
         BN = [87 82 126] / 255; 
         NB = [157 99 136] / 255;
         NN = [255 0 0] / 255;
+        
+        p2p_thres = 0.43;
+        
     end
     methods 
         function obj = dbHandler()
@@ -48,7 +51,7 @@ classdef dbHandler
         end
         %%
         function color = get_color(obj, s)
-            if obj.get_p2p(s) >= .43
+            if obj.get_p2p(s) >= obj.p2p_thres
                 color = obj.BB;
             else
                 color = obj.NN;

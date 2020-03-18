@@ -21,4 +21,7 @@ if ~isempty(varargin)
         end
     end
 end
+
+keys = obj.sort_by_file_timestamp(keys);
+
 end

@@ -3,7 +3,8 @@ function [habit_fam, song_fam, pairs, latency_db] = waveform_connector(obj, habi
 %connect their respective waveforms
 %   Takes the key families of both input arguments and allows you to
 %   compare each unit from both recordings.
-
+%%
+close all;
 %% Get the key families of both inputs
 habit_fam = obj.get_key_family(habit_key);
 song_fam  = obj.get_key_family(song_key);
@@ -38,12 +39,10 @@ song_fam  = obj.get_key_family(song_key);
             fam{sort_ind} = curr_key;
             ax = subplot(2,length(fam), sort_ind+row);
             obj.plot_waveform(curr_key, ax);
-            % the title is the channel number.
-            title(chan);
+           
+            title(['ind ' num2str(sort_ind) '; tet ' num2str(floor(chan/4))])
             
-            % in the figure, add data about sort_ind (for later use in this
-            % code), and about the tetrode.
-            text(ax, 10, 100, ['ind' num2str(sort_ind) ', tet' num2str(floor(chan/4))])
+            text(ax, 10, 100, ['p2p: ' num2str(obj.get_p2p(obj.db(curr_key)))])
             
             % label the row
             if sort_ind == 1
@@ -59,7 +58,7 @@ song_cell  = show_by_channel(obj, song_fam, 0);
 done = false;
 pairs = {};
 while ~done
-    user_in = input('top row then bottom row, e.g. "3 3"\n', 's');
+    user_in = input('Enter the ind of the top row then bottom row, e.g. "3 3"\n', 's');
     if contains(user_in, 'done')
         done = true;
     else
@@ -79,11 +78,14 @@ for i=1:length(pairs)
     if i == 1
         song_key  = char(song_cell(pairs{1}(2)));
         obj.get_song_syllable_activity(song_key, 0); % the one means only that cell, zero means all cells   
-        input('press enter once youve clicked "show syllables"','s')
+        input('press enter once you''ve gone through, annotated, and clicked "show syllables"','s')
         song_sTs = load('C:\Users\danpo\Documents\song.mat'); % song_sTs.song
         % Both this function and get_song_syllable_activity use get_key_family.
         latency_db = load('C:\Users\danpo\Documents\latency_db.mat');
         latency_db = latency_db.latency_db;
+        
+        disp('saving...')
+
     end
     %% find the song_sTs field that best matches song_key
     song_key = char(song_cell(pairs{i}(2))); % 2 corresponds to song
@@ -104,8 +106,8 @@ for i=1:length(pairs)
     latency_db_key = matlab.lang.makeValidName(latency_db_key);
     % initialize as struct so you can call it another field deep later
     latency_db.(latency_db_key) = struct_sTs;
-    disp('saving...')
     save('C:\Users\danpo\Documents\latency_db.mat', 'latency_db');    
-    disp('done saving')
 end
+    disp('done saving')
+
 end
