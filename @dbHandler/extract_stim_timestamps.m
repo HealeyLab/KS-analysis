@@ -44,6 +44,8 @@ function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, curr_dir)
     %% 2
     disp('reading audio file')            
     wav_files=obj.get_audio(audioPath);
+    assert(~isempty(wave_files),...
+        'You have not added information for this subject to the audioPath property in the dbHandler constructor')
     for i=1:length(wav_files)
         cur_wav=wav_files(i).wav;
         cur_fs = wav_files(i).fs;
@@ -60,6 +62,7 @@ function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, curr_dir)
     timestamps = NaN(length(over),1);
 
     for i=1:length(over)
+        % extracting the filename pertinent
         curr_wav_path = split(filecell{1}{i},'\');
         curr_wav_name = curr_wav_path{end};
         s = wav_files(strcmp({wav_files.name},curr_wav_name));

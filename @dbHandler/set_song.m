@@ -1,4 +1,4 @@
-function set_song
+function set_song(obj)
 %%SET_SONG Extracts BOS from an intan recording.
 %    This is the function to use to extract BOS at the beginning of an
 %    experiment
