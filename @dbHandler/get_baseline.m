@@ -1,6 +1,5 @@
 function [avg_fr] = get_baseline(obj,key, pattern)
-%GET_BASELINE Returns the FR for the baseline
-%during the baseline
+%GET_BASELINE Returns the FR for the baseline for playback trials
 %   Detailed explanation goes here
 sp_ts = obj.db(key).spike_timestamps;
 stim_ids = obj.db(key).stim_identities{1};

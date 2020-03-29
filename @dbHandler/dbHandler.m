@@ -179,11 +179,20 @@ classdef dbHandler
             spike_timestamps = sp.st * sp.sample_rate;
             gwfparams.spikeTimes = readNPY([gwfparams.dataDir '\spike_times.npy']); % ceil(spike_timestamps);
             gwfparams.spikeClusters = readNPY([gwfparams.dataDir '\spike_clusters.npy']); % sp.clu;
+            
+            
             %% Beata's stuff
             gwfparams.chanMap = readNPY([gwfparams.dataDir '\channel_map.npy']); % this is important in esp if you go rid of files. 
             gwfparams.cluster_quality=tdfread([gwfparams.dataDir '\cluster_info.tsv']); % has a bunch of info here. 
-            best_channels = (gwfparams.cluster_quality.channel);  
-            
+            try
+                best_channels = (gwfparams.cluster_quality.channel);  
+            catch e
+                % [7 Feb 2020] phy 2.0 beta 1 
+                % Different versions of phy2's template gui do the
+                % cluster_into.tsv differently- the headers are abbreviated
+                % for some cases.
+                best_channels = (gwfparams.cluster_quality.ch); 
+            end
             %TODO: add MUA functionality
             good_clusters =gwfparams.cluster_quality.id(...
                 find(gwfparams.cluster_quality.group(:,1)=='g')); % | gwfparams.cluster_quality.group(:,1)=='m'));
@@ -193,10 +202,11 @@ classdef dbHandler
             %%
 %             wf = getWaveForms(gwfparams);
             %%
-            input('when you run the export best channels script, click enter')
             %%
             % CLUSTER GROUP DATA
             if ~isempty(dir('cluster_groups.csv'))
+                input('when you run the export best channels script, click enter')
+
                 cluster_quality = readtable('cluster_groups.csv');
             else
                 cluster_quality_s = tdfread('cluster_group.tsv', '\t');
@@ -261,7 +271,13 @@ classdef dbHandler
             elseif ~isempty(dir('cluster_info.tsv'))
                 tsv=tdfread('cluster_info.tsv');
                 Cluster_idPhy2 = tsv.id;
-                Best_channelPhy2 = tsv.channel;
+                
+                try
+                    Best_channelPhy2 = tsv.channel;
+                catch e
+                    Best_channelPhy2 = tsv.ch;
+                end
+                
                 goodnessPhy2 = tsv.group;
                 
                 tsvData = table(Cluster_idPhy2, Best_channelPhy2, goodnessPhy2);
@@ -315,6 +331,7 @@ classdef dbHandler
             elseif contains(key, 'mde')
                 id = 'mde';
                 num = 5;
+                
             elseif contains(key, 'mdx')
                 id = 'mdx';
                 num = 6;

@@ -1,6 +1,6 @@
 function waveform_analysis(obj)
-%%WAVEFORM_ANALYSIS This is for going through your entire dataset and 
-%%marking each waveform as good or bad. It is your final pass.
+%% WAVEFORM_ANALYSIS This is for going through your entire dataset and 
+%% marking each waveform as good or bad. It is your final pass.
 % This opens a GUI to let you increment through each waveform. It displays
 % some statistics about the waveform, including p2p length and symmtry.
     keys = obj.db.keys;
@@ -96,11 +96,19 @@ function waveform_analysis(obj)
         show_wf_analysis_include(s, status_handle);
     end        
 
-    function s = increment(amt, handle)
-        count = count+amt; 
+    function s = increment(amt, handle)      
+        if count <= 1 && amt < 0
+            count = length(wf_keys);
+        elseif count == length(wf_keys) && amt > 0
+            count = 0;
+        else
+            count = count + amt; 
+        end
 
         [s, key] = get_s();
+        
 
+        
         wf = s.spike_waveforms;
         wf_mean = nanmean(wf,2);
         % plot 20 in grey

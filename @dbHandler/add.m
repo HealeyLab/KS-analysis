@@ -5,6 +5,7 @@ function add(obj)
     workingDirectory = pwd;
     has_stim_markers = ~isempty(dir('*markers.txt'));
     if has_stim_markers
+        % timestamps are the onset
         [stim_timestamps, stim_identities, adc_sr] = obj.extract_stim_timestamps(pwd);
     end
 
@@ -89,6 +90,11 @@ function add(obj)
             s.stim_identities = stim_identities;
         end
 
+        
+        stim_data_path = fullfile(workingDirectory, 'adc_data.mat');
+        S = load(stim_data_path); % S.board_adc, S.adc_sr
+        s.adc_sampling_rate = S.adc_sr;
+        
         % for microphone trace, only add if context is "song"
         % I'm adding the mic data to a new key so that it doesn't
         % take up too much space, so that it doesn't take too much
@@ -97,9 +103,7 @@ function add(obj)
         % this gets kept with the rest of the data, redundantly. Because
         % I'm lazy and it's basically size zero.
 
-            stim_data_path = fullfile(workingDirectory, 'adc_data.mat');
-            S = load(stim_data_path); % S.board_adc, S.adc_sr
-            s.adc_sampling_rate = S.adc_sr;
+            
             obj.db(obj.get_family_name(key)) = S.board_adc(3,:);
         end
 

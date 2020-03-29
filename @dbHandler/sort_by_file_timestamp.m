@@ -1,5 +1,5 @@
 function [cellArrOut] = sort_by_file_timestamp(~, fns)
-%SORT_BY_FILE_TIMESTAMP Sorts cell array by the timestamp
+%% SORT_BY_FILE_TIMESTAMP Sorts cell array by the timestamp
 %   when outputting from, say, dbHandler.get_keys(), it's sorted by 
 %   filename, but chronological data is in the middle of the
 %   file, so this takes that data in the middle of the file and sorts the

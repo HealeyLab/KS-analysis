@@ -12,6 +12,7 @@ function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, curr_dir)
     % adc data
     stim_data_path = fullfile(workingDirectory, 'adc_data.mat');
     S = load(stim_data_path); % S.board_adc, S.adc_sr
+    S.board_adc(1,:) = obj.filter_song(S.board_adc(1,:), S.adc_sr);
     adc_sr = S.adc_sr;
 
     audioPath = obj.get_audioPath(workingDirectory);
@@ -44,7 +45,7 @@ function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, curr_dir)
     %% 2
     disp('reading audio file')            
     wav_files=obj.get_audio(audioPath);
-    assert(~isempty(wave_files),...
+    assert(~isempty(wav_files),...
         'You have not added information for this subject to the audioPath property in the dbHandler constructor')
     for i=1:length(wav_files)
         cur_wav=wav_files(i).wav;
@@ -59,7 +60,7 @@ function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, curr_dir)
 %             hold on;
 %             plot(S.board_adc(2,:))
 %             plot(S.board_adc(1,:))
-    timestamps = NaN(length(over),1);
+%     timestamps = NaN(length(over),1);
 
     for i=1:length(over)
         % extracting the filename pertinent
@@ -91,11 +92,14 @@ function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, curr_dir)
 %         Viz
 %         figure; hold on; plot(norm_adc_audio(over(i)+lagDiff:under(i)+lagDiff));plot(s.wav/4+.5)
 %         figure; hold on; plot(norm_adc_audio(over(i)+lagDiff:under(i)+lagDiff));plot(y/120 +.5)
-% 
-%         figure; plot(S.board_adc(2,:))
-%         hold on; plot(S.board_adc(1,:))
-%         
-%                     hold on;
+
+%         % raw and onoff
+                    if i == 1
+                        figure; plot(S.board_adc(2,:))
+                        hold on; plot(S.board_adc(1,:))
+                    end
+                    hold on;
+                    plot(timestamps(i), .2, 'r*')
 %                     plot(norm_adc_audio(over(i):under(i)))
 %                     plot([zeros(abs(lag(I)),1); y])
 %                     plot(lag(I), .2, 'r*')

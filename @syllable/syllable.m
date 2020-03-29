@@ -44,8 +44,8 @@ classdef syllable
                 end
                 
                 amp_x = obj.window_s * 60 * entry.amplifier_sampling_rate;
-                sTs = entry.spike_timestamps; % query value
-                
+                sTs = entry.spike_timestamps;  % query value
+                sTs = entry.spike_timestamps - 0.040 * entry.adc_sampling_rate;
                 % only get within this window and normalize
                 obj.cells{i} = ...
                     sTs(sTs > amp_x(1) & sTs < amp_x(2)) - amp_x(1); 

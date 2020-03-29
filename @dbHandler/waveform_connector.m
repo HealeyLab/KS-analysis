@@ -1,4 +1,4 @@
-function [habit_fam, song_fam, pairs, latency_db] = waveform_connector(obj, habit_key, song_key)
+function output = waveform_connector(obj, habit_key, song_key)
 %WAVEFORM_CONNECTOR Allows you to take a day of habituation and song and
 %connect their respective waveforms
 %   Takes the key families of both input arguments and allows you to
@@ -54,7 +54,7 @@ figure;
 habit_cell = show_by_channel(obj, habit_fam, 1);
 song_cell  = show_by_channel(obj, song_fam, 0);
 
-%% Use input to 
+%% Use input to connect individual units
 done = false;
 pairs = {};
 while ~done
@@ -68,46 +68,10 @@ while ~done
     end
 end
 
+output = cell(length(pairs),2);
 for i=1:length(pairs)
-    %% habit data
-    habit_key = char(habit_cell(pairs{i}(1))); % 1 corresponds to habit_cell
-    struct_sTs = obj.gen_playback_syllable_PSTHs(habit_key); 
-    %% song data (just once)
-    % must go after gen_playback_syllable_PSTHs so that you know what the
-    % syllables look like
-    if i == 1
-        song_key  = char(song_cell(pairs{1}(2)));
-        obj.get_song_syllable_activity(song_key, 0); % the one means only that cell, zero means all cells   
-        input('press enter once you''ve gone through, annotated, and clicked "show syllables"','s')
-        song_sTs = load('C:\Users\danpo\Documents\song.mat'); % song_sTs.song
-        % Both this function and get_song_syllable_activity use get_key_family.
-        latency_db = load('C:\Users\danpo\Documents\latency_db.mat');
-        latency_db = latency_db.latency_db;
-        
-        disp('saving...')
-
-    end
-    %% find the song_sTs field that best matches song_key
-    song_key = char(song_cell(pairs{i}(2))); % 2 corresponds to song
-    song_key_rep = strrep(strrep(song_key, ' ', '_'), '&', '_');
-    fields = fieldnames(song_sTs.song);
-    field = fields{find(strcmp(fieldnames(song_sTs.song), song_key_rep))};
-    struct_sTs.song = song_sTs.song.(field);
-    
-    %% add it to the database
-    habit_key = strsplit(habit_key, '_');
-    habit_key = strjoin({habit_key{2:end}},'_');
-    song_key = strsplit(song_key, '_');
-    song_key = strjoin({song_key{2:end}}, '_');
-    
-    latency_db_key = [habit_key '+' song_key];
-    latency_db_key = strrep(latency_db_key, '&', '_'); % ampersands not allowed as field names
-    latency_db_key = erase(latency_db_key, 'Kilosort'); % need to shorten it
-    latency_db_key = matlab.lang.makeValidName(latency_db_key);
-    % initialize as struct so you can call it another field deep later
-    latency_db.(latency_db_key) = struct_sTs;
-    save('C:\Users\danpo\Documents\latency_db.mat', 'latency_db');    
+    output{i,1} = habit_cell{pairs{i}(1)};
+    output{i,2} = song_cell{pairs{i}(2)};
 end
-    disp('done saving')
 
 end
