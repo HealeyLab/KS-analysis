@@ -43,21 +43,11 @@ f = waitbar(0, 'loading');
 for i=1:length(files)
     
     read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0);
-    % only runs once
-    if ~exist('a1', 'var')
-        [b1, a1] = butter(3, 300/frequency_parameters.amplifier_sample_rate*2, 'high');
-    end
+    
+    % bandpass filter
+    datr = filter_datr(amplifier_data, frequency_parameters);
 
-    % filter
-    dataRAW = amplifier_data';
-    dataRAW = single(dataRAW);
-
-    datr = filter(b1, a1, dataRAW);
-    datr = flipud(datr);
-    datr = filter(b1, a1, datr);
-    datr = flipud(datr);
-    datr=datr';
-    fwrite(fid1a, datr(:),'int16'); % append to .dat file
+    fwrite(fid1a, datr(:),'int16'); % append to .dat files
     %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
     if size(board_adc_data, 1) == 2
         board_adc_data = [NaN(1, size(board_adc_data, 2)); board_adc_data];
@@ -70,7 +60,7 @@ for i=1:length(files)
         stdfig = figure;
         hold on
         OFFSET = 600;
-        for j = 1:16
+        for j = 1:2:16
             plot(datr(j,:)+j*OFFSET)
             for k = 1:8
                 plot(-1* k * std(datr(j,:)) * ones(length(datr(j,:)),1) + j*OFFSET)
@@ -165,7 +155,7 @@ thres = input('what do you want the threshold to be?\n','s');
 if strcmp(thres,"")
     thres = -6;
 end
-A{42} = sprintf('ops.Th               = [%s %s %s];    ', thres);
+%A{42} = sprintf('ops.Th               = [6 10 10];    ');
 A{52} = sprintf('ops.spkTh           = -%s;      ', thres);
 %%
 if is_32
@@ -203,7 +193,6 @@ while ischar(tline)
     B{i} = tline;
 end
 fclose(fid4);
-% Change lines of .m file
 B{3} = sprintf('Nchannels = %s;', n_channels_dat);
 B{6} = sprintf('pathToYourConfigFile = ''%s'';', dataPath);
 B{11} = sprintf('fs = %s;', sample_rate);
@@ -276,7 +265,7 @@ run(master_file_example_pasted) % master_file_example_MOVEME
 % [rez, DATA, uproj] = preprocessData(ops); % preprocess data and extract spikes for initialization
 %%
 
-pushBulletDriver(strjoin(['done sorting ' string(pwd)]));
+% pushBulletDriver(strjoin(['done sorting ' string(pwd)]));
 beep
 toc
 

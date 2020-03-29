@@ -44,10 +44,10 @@ classdef dbHandler
     end
     methods 
         function obj = dbHandler()
-            tic
-            S = load(obj.dbPath); 
-            obj.db = S.db;
-            disp(['loaded in ' num2str(toc/60) ' mins'])
+%             tic
+%             S = load(obj.dbPath); 
+%             obj.db = S.db;
+%             disp(['loaded in ' num2str(toc/60) ' mins'])
         end
         %%
         function color = get_color(obj, s)
