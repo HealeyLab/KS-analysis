@@ -4,6 +4,7 @@ function song_filtered = filter_song(~, board_adc, sr)
 
     mic = board_adc(end,:);
     fcutlow = 550;
+
     fcuthigh = 12e3;
     order = 3;
     try
