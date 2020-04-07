@@ -8,7 +8,12 @@ close all;
 %% Get the key families of both inputs
 habit_fam = obj.get_key_family(habit_key);
 song_fam  = obj.get_key_family(song_key);
-
+polytrode = input('tetrode or stereotrodes?','s');
+if contains(polytrode, 'tet')
+    polytrode = 4;
+elseif contains(polytrode, 'stereo')
+    polytrode = 2;
+end
 %% Generate two figures: one for habit_fam and song_fam
 % For both figures, sort the families by channel
     function fam = show_by_channel(obj, fam, above)
@@ -40,9 +45,9 @@ song_fam  = obj.get_key_family(song_key);
             ax = subplot(2,length(fam), sort_ind+row);
             obj.plot_waveform(curr_key, ax);
            
-            title(['ind ' num2str(sort_ind) '; tet ' num2str(floor(chan/4))])
+            title(['i:' num2str(sort_ind) '; t:' num2str(floor((chan-1)/polytrode))])
             
-            text(ax, 10, 100, ['p2p: ' num2str(obj.get_p2p(obj.db(curr_key)))])
+            text(ax, 10, 100, [num2str(obj.get_p2p(obj.db(curr_key)))])
             
             % label the row
             if sort_ind == 1

@@ -3,7 +3,7 @@ function song_filtered = filter_song(~, board_adc, sr)
 % For visualizing purposes, I often need to clean up a song trace.
 
     mic = board_adc(end,:);
-    fcutlow = 300;
+    fcutlow = 550;
     fcuthigh = 12e3;
     order = 3;
     try
