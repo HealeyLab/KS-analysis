@@ -56,17 +56,17 @@ for i=1:length(files)
     
     waitbar(i/length(files), f, 'loading Intan data')
     
-    if i == 1
-        stdfig = figure;
-        hold on
-        OFFSET = 600;
-        for j = 1:2:16
-            plot(datr(j,:)+j*OFFSET)
-            for k = 1:8
-                plot(-1* k * std(datr(j,:)) * ones(length(datr(j,:)),1) + j*OFFSET)
-            end
-        end
-    end
+%     if i == 1
+%         stdfig = figure;
+%         hold on
+%         OFFSET = 600;
+%         for j = 1:2:12
+%             plot(datr(j,:)+j*OFFSET)
+%             for k = 1:8
+%                 plot(-1* k * std(datr(j,:)) * ones(length(datr(j,:)),1) + j*OFFSET)
+%             end
+%         end
+%     end
 end
 
 fclose(fid1a);
@@ -148,15 +148,19 @@ A{8}  = sprintf('ops.fproc = ''%s'';', fullfile(dataPath,'temp_wh.dat')); % data
 A{9}  = sprintf('ops.root = ''%s'';',dataPath);
 A{11} = sprintf('ops.fs = %s;',sample_rate);
 A{12} = sprintf('ops.NchanTOT = %s;', n_channels_dat);
+A{51} = sprintf('ops.initialize      = ''fromData''; %''fromData'' or ''no''');
 %% LOW THRESHOLD MODE
-disp('study the stdfig and find a threshold you like')
-waitfor(stdfig)
-thres = input('what do you want the threshold to be?\n','s');
-if strcmp(thres,"")
-    thres = -6;
-end
+% disp('Do not enter anything yet. Study the stdfig close it. ');
+% pushBulletDriver('select threshold');
+% 
+% waitfor(stdfig)
+% thres = input('Enter threshold\n','s');
+% if strcmp(thres,"")
+%     thres = -6;
+% end
 %A{42} = sprintf('ops.Th               = [6 10 10];    ');
-A{52} = sprintf('ops.spkTh           = -%s;      ', thres);
+A{52} = sprintf('ops.spkTh           = -5;');
+% A{52} = sprintf('ops.spkTh           = -%s;      ', thres);
 %%
 if is_32
     num_active_chan = 32;
@@ -265,7 +269,7 @@ run(master_file_example_pasted) % master_file_example_MOVEME
 % [rez, DATA, uproj] = preprocessData(ops); % preprocess data and extract spikes for initialization
 %%
 
-% pushBulletDriver(strjoin(['done sorting ' string(pwd)]));
+pushBulletDriver(strjoin(['done sorting ' string(pwd)]));
 beep
 toc
 
