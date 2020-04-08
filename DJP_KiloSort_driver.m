@@ -148,7 +148,12 @@ A{8}  = sprintf('ops.fproc = ''%s'';', fullfile(dataPath,'temp_wh.dat')); % data
 A{9}  = sprintf('ops.root = ''%s'';',dataPath);
 A{11} = sprintf('ops.fs = %s;',sample_rate);
 A{12} = sprintf('ops.NchanTOT = %s;', n_channels_dat);
-A{51} = sprintf('ops.initialize      = ''fromData''; %''fromData'' or ''no''');
+A{14} = sprintf('ops.Nfilt = 32;');
+A{47} = sprintf('ops.mergeT           = .08;');
+A{48} = sprintf('ops.splitT           = .12;');
+
+
+A{51} = sprintf('ops.initialize      = ''fromData'';');
 %% LOW THRESHOLD MODE
 % disp('Do not enter anything yet. Study the stdfig close it. ');
 % pushBulletDriver('select threshold');
