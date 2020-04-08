@@ -2,8 +2,9 @@ function song_filtered = filter_song(~, board_adc, sr)
 %% FILTER_SONG Filters song trace 300-12k Hz
 % For visualizing purposes, I often need to clean up a song trace.
 
-    mic = board_adc(end,:); % if you re trying to access the audio trace, do (1,:)
-    fcutlow = 300;
+    mic = board_adc(end,:);
+    fcutlow = 550;
+
     fcuthigh = 12e3;
     order = 3;
     try

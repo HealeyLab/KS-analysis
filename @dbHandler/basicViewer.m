@@ -21,6 +21,10 @@ end
 hs = addcomponents();
 axes(hs.sa);
 
+% Midsonogram = medfilt1(sonogram, 5); % Smooth signal
+% badIndexes = abs(sonogram-Midsonogram ) > 0.017; % Find bad ones
+% sonogram(badIndexes) = Midsonogram(badIndexes); % Repair signal
+
 obj.showSpectrogram(sonogram, adc_sr);
 %% declare function variables
 intros = [];
@@ -66,7 +70,11 @@ function hs = addcomponents()
     end
     
     function play(hObject,~)
-        sound(sonogram-mean(sonogram), adc_sr/2);
+        toPlay =sonogram-mean(sonogram);
+        axes(hs.sa)
+        xl = xlim * adc_sr;
+        toPlay = toPlay(xl(1):xl(2));
+        sound(toPlay, adc_sr/2);
     end
     
     function show(hObject,~)
@@ -75,7 +83,7 @@ function hs = addcomponents()
 end
    
 function showHelper()
-    [introKey motifKey]=obj.get_song_motif_key(argin);
+    [introKey motifKey]=obj.getMotifKey(argin);
     obj.db(introKey) = intros;
     obj.db([motifKey]) = motifs;
     disp('added')

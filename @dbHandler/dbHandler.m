@@ -19,7 +19,13 @@
 % plot(board_adc(2,:))
 % save('adc_data', 'board_adc', 'adc_sr', '-v7.3')
 %%
-
+%{
+dbh = dbHandler();
+[pbT, songT]=dbh.Fig1ExtractTables(0)
+T = dbh.scatterTable()
+dbh.Fig1Viz(pbT, songT, T)
+%}
+%%
 classdef dbHandler
     properties
         dbPath = 'C:\Users\danpo\Documents\db.mat';%'E:\DJP thesis sorting\db.mat';
@@ -32,7 +38,9 @@ classdef dbHandler
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdb',...
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdc',...
             'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdd',...
-            'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mde'};
+            'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mde',...
+            'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdi',...
+            'C:\Users\danpo\Documents\MATLAB\ephysSuite\zf son mdk'};
         
         BB = [0 0 255] / 255;
         BN = [87 82 126] / 255;
@@ -57,7 +65,7 @@ classdef dbHandler
                 color = obj.NN;
             end
         end
-        %%
+%%
         function figs = generate_figures(obj, key_pattern)
             % return a list of figs that can ust be deleted real easily
             figs = [];
@@ -331,16 +339,22 @@ classdef dbHandler
             elseif contains(key, 'mde')
                 id = 'mde';
                 num = 5;
-                
+            elseif contains(key, 'mdi')
+                id = 'mdi';
+                num = 6;
+            elseif contains(key, 'mdk')
+                id = 'mdk';
+                num = 7;
+            
             elseif contains(key, 'mdx')
                 id = 'mdx';
-                num = 6;
+                num = 8;
             elseif contains(key, 'mdy')
                 id = 'mdy';
-                num = 7;
+                num = 9;
             elseif contains(key, 'mdz')
                 id = 'mdz';
-                num = 8;
+                num = 10;
             else
                 id = '';
                 num = 0;

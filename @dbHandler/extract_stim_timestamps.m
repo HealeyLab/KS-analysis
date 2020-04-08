@@ -88,22 +88,21 @@ function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, curr_dir)
         
         [~,I] = max((co));
         lagDiff = lag(I); % is the difference in start of signal between orignial .wav and in TTL envelope
-        timestamps(i) = over(i) + (lagDiff); 
+        timestamps(i) =  over(i) + (lagDiff); % under(i) - length(s.wav) / s.fs * adc_sr;
 %         Viz
 %         figure; hold on; plot(norm_adc_audio(over(i)+lagDiff:under(i)+lagDiff));plot(s.wav/4+.5)
 %         figure; hold on; plot(norm_adc_audio(over(i)+lagDiff:under(i)+lagDiff));plot(y/120 +.5)
 
 %         % raw and onoff
-                    if i == 1
-                        figure; plot(S.board_adc(2,:))
-                        hold on; plot(S.board_adc(1,:))
-                    end
-                    hold on;
-                    plot(timestamps(i), .2, 'r*')
+        if i == 1
+            figure; plot(S.board_adc(2,1:end/5))
+            hold on; plot(S.board_adc(1,1:end/5))
+        end
+        plot(timestamps(i), .2, 'r*')
 %                     plot(norm_adc_audio(over(i):under(i)))
 %                     plot([zeros(abs(lag(I)),1); y])
 %                     plot(lag(I), .2, 'r*')
-    %                 close all
+%                 close all
     end
 %             hold on;
 %             plot(norm_adc_audio)
