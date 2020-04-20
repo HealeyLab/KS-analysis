@@ -56,17 +56,6 @@ for i=1:length(files)
     
     waitbar(i/length(files), f, 'loading Intan data')
     
-%     if i == 1
-%         stdfig = figure;
-%         hold on
-%         OFFSET = 600;
-%         for j = 1:2:12
-%             plot(datr(j,:)+j*OFFSET)
-%             for k = 1:8
-%                 plot(-1* k * std(datr(j,:)) * ones(length(datr(j,:)),1) + j*OFFSET)
-%             end
-%         end
-%     end
 end
 
 fclose(fid1a);
@@ -97,7 +86,7 @@ clear amplifier_channels amplifier_data aux_input_channels aux_input_data ...
         board_dig_in_data board_dig_in_channels filename frequency_parameters ...
         notes reference_channel spike_triggers supply_voltage_channels supply_voltage_data ...
         t_amplifier t_aux_input t_dig t_supply_voltage
-%% Run Kilosort
+%% Figure out which standard config is neede dhere
 % copy master file example and  standard config and then edit them
 working_dir = 'C:\Users\HealeyLab\Documents\DJP\KS-analysis';
 if      is_32 && ~is_stereo % if 32 chan tetrode
@@ -128,7 +117,7 @@ end
 master_file_example_pasted = fullfile(dataPath, 'master_file_example_MOVEME.m');
 StandardConfig_pasted      = fullfile(dataPath, 'StandardConfig_MOVEME.m');
 
-%% First, StandardConfig is copied into cell with code taken from online
+%% Edit standard config
 % https://www.mathworks.com/matlabcentral/answers/62986-how-to-change-a-specific-line-in-a-text-file
 fid3 = fopen(StandardConfig_pasted,'r');
 i = 1;
@@ -154,19 +143,8 @@ A{48} = sprintf('ops.splitT           = .12;');
 
 
 A{51} = sprintf('ops.initialize      = ''fromData'';');
-%% LOW THRESHOLD MODE
-% disp('Do not enter anything yet. Study the stdfig close it. ');
-% pushBulletDriver('select threshold');
-% 
-% waitfor(stdfig)
-% thres = input('Enter threshold\n','s');
-% if strcmp(thres,"")
-%     thres = -6;
-% end
-%A{42} = sprintf('ops.Th               = [6 10 10];    ');
 A{52} = sprintf('ops.spkTh           = -5;');
-% A{52} = sprintf('ops.spkTh           = -%s;      ', thres);
-%%
+
 if is_32
     num_active_chan = 32;
 else
@@ -191,7 +169,7 @@ for i = 1:numel(A)
     end
 end
 fclose(fid3);
-%% Second, ChannelMap is copied into cell with code taken from online
+%% Edit Channelmap 
 fid4 = fopen(ChannelMapFile_pasted,'r');
 i = 1;
 tline = fgetl(fid4);
@@ -226,7 +204,7 @@ for i = 1:numel(B)
     end
 end
 fclose(fid4);
-%% Third, edit the master file
+%% Edit the master file
 fid5 = fopen(master_file_example_pasted,'r');
 i = 1;
 tline = fgetl(fid5);
@@ -237,11 +215,9 @@ while ischar(tline)
     C{i} = tline;
 end
 fclose(fid5);
-% Change lines of .m file
 C{3} = sprintf('addpath(genpath(''C:\\KiloSort-master''))'); % path to LOCAL kilosort folder
 
 C{6} = sprintf('pathToYourConfigFile = ''%s''; ', dataPath);
-% C{24} = sprintf('rez = merge_posthoc2(rez);', dataPath);
 
 % Write cell C into txt
 fid5 = fopen(master_file_example_pasted, 'w');
@@ -257,7 +233,6 @@ fclose(fid5);
 %%
 fclose('all');
 %% Go
-
 run(ChannelMapFile_pasted)
 run(master_file_example_pasted) % master_file_example_MOVEME
 %% 
