@@ -15,47 +15,55 @@ function add(obj)
         obj.filter_raw_data()
     end
     [spike_waveform_info, spike_timestamps, sp] = obj.getWaveFormsDriver();
-
-    % get depth
-    depth = input('depth of probe (um)\n');
     
-    % get context
-    context = '';
-    while ~(strcmp(context, 'habituation') || strcmp(context, 'random')...
-            || strcmp(context, 'song') || strcmp(context, 'other'))
-        context = input('habituation, random, song, or other?\n','s');
-    end
-
-    % get hemisphere
-    if contains(workingDirectory, 'mdx')...
-            || contains(workingDirectory, 'mde')...
-            || contains(workingDirectory, 'mdk')
-        hemisphere = 'R';
-    elseif contains(workingDirectory, 'mdy') ...
-            || contains(workingDirectory, 'mda')...
-            || contains(workingDirectory, 'mdb')...
-            || contains(workingDirectory, 'mdc')...
-            || contains(workingDirectory, 'mdd')...
-            || contains(workingDirectory, 'mdi')
-        hemisphere = 'L';
+    % Contingency caching
+    example_s = obj.remove(obj.get_family_name(workingDirectory));
+    if ~isempty(example_s)
+        depth = example_s.depth;
+        context = example_s.context;
+        for_wf_analysis = example_s.for_wf_analysis;
+        hemisphere = example_s.hemisphere;
     else
-        error('This subject is not listed as having a hemisphere')
-    end
+        % get depth
+        depth = input('depth of probe (um)\n');
 
-    % use this recording for waveform analysis?
-    yn = '';
-    while ~strcmp(yn, 'y') && ~strcmp(yn, 'n')
-        yn = input('Should this recording be used for broad/narrow waveform analysis? y/n\n', 's');
-        if yn == 'y'
-            for_wf_analysis = 1;
-        elseif yn == 'n'
-            for_wf_analysis = 0;
+        % get context
+        context = '';
+        while ~(strcmp(context, 'habituation') || strcmp(context, 'random')...
+                || strcmp(context, 'song') || strcmp(context, 'other'))
+            context = input('habituation, random, song, or other?\n','s');
+        end
+
+        % get hemisphere
+        if contains(workingDirectory, 'mdx') || contains(workingDirectory, 'mde') || contains(workingDirectory, 'mdk')
+            hemisphere = 'R';
+        elseif contains(workingDirectory, 'mdy') ...
+                || contains(workingDirectory, 'mda')...
+                || contains(workingDirectory, 'mdb')...
+                || contains(workingDirectory, 'mdc')...
+                || contains(workingDirectory, 'mdd')...
+                || contains(workingDirectory, 'mdi')
+            hemisphere = 'L';
+        else
+            error('This subject is not listed as having a hemisphere')
+        end
+
+        % use this recording for waveform analysis?
+        yn = '';
+        while ~strcmp(yn, 'y') && ~strcmp(yn, 'n')
+            yn = input('Should this recording be used for broad/narrow waveform analysis? y/n\n', 's');
+            if yn == 'y'
+                for_wf_analysis = 1;
+            elseif yn == 'n'
+                for_wf_analysis = 0;
+            end
         end
     end
-
     %% put info into struct
     % TODO: add LFP and if it's before or after E2
-    obj.remove(workingDirectory);
+    stim_data_path = fullfile(workingDirectory, 'adc_data.mat');
+    S = load(stim_data_path); % S.board_adc, S.adc_sr
+        
     for i = 1:length(spike_waveform_info)
 
         key = obj.keyhash(workingDirectory, spike_waveform_info(i).unit,...
@@ -91,8 +99,6 @@ function add(obj)
         end
 
         
-        stim_data_path = fullfile(workingDirectory, 'adc_data.mat');
-        S = load(stim_data_path); % S.board_adc, S.adc_sr
         s.adc_sampling_rate = S.adc_sr;
         
         % for microphone trace, only add if context is "song"
@@ -102,16 +108,13 @@ function add(obj)
         if strcmp(s.context, 'song')
         % this gets kept with the rest of the data, redundantly. Because
         % I'm lazy and it's basically size zero.
-
-            
             obj.db(obj.get_family_name(key)) = S.board_adc(3,:);
         end
-
-
         % when was this added?
         s.whenadded = datetime;
         obj.db(key) = s;
     end
+    beep;
 %             obj.save_db();
 end
 

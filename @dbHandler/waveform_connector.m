@@ -45,7 +45,7 @@ end
             ax = subplot(2,length(fam), sort_ind+row);
             obj.plot_waveform(curr_key, ax);
            
-            title(['i:' num2str(sort_ind) '; t:' num2str(floor((chan-1)/polytrode))])
+            title(['i:' num2str(sort_ind) '; t:' num2str(chan)]) % num2str(floor((chan-1)/polytrode))
             
             text(ax, 10, 100, [num2str(obj.get_p2p(obj.db(curr_key)))])
             

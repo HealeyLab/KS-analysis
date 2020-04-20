@@ -6,7 +6,7 @@ function [t] = sort_by(obj, keys, field)
     for i=1:length(keys)
         curr = obj.db(keys{i});
         if isfield(curr, field)
-            currVal = curr.whenadded;
+            currVal = curr.(field);
             newrow={keys{i} curr.(field)};
             if ~exist('tsCell', 'var')
                 tsCell = cell(1,2);
@@ -17,7 +17,10 @@ function [t] = sort_by(obj, keys, field)
         end
     end
     keys = tsCell(:,1); % filtered
-    [fieldOut,inds] = sort(cellfun(@(X) X(1), tsCell(:,2))); % sort by field
-    cellArrOut = keys(inds); % sort the keys
-    t = table(keys, fieldOut);
+    % sort by field
+    [fieldOut,inds] = sort(cellfun(@(X) X(1), tsCell(:,2))); 
+    % sort the keys to follows the struct sorting
+    cellArrOut = keys(inds); 
+    % put it all into a table
+    t = table(cellArrOut, fieldOut);
 end

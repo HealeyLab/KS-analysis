@@ -52,10 +52,10 @@ classdef dbHandler
     end
     methods 
         function obj = dbHandler()
-%             tic
-%             S = load(obj.dbPath); 
-%             obj.db = S.db;
-%             disp(['loaded in ' num2str(toc/60) ' mins'])
+            tic
+            S = load(obj.dbPath); 
+            obj.db = S.db;
+            disp(['loaded in ' num2str(toc/60) ' mins'])
         end
         %%
         function color = get_color(obj, s)
@@ -138,28 +138,37 @@ classdef dbHandler
         end
         
         %% Remove all entries with match to key
-        function remove(obj, key_family)
-            key_family = strsplit(key_family, '&');
-            key_family = key_family{1};
- 
-            db = obj.db;
-            keys = db.keys;
-            for i = 1:length(keys)
-                if iscell(keys)
+        function example_entry = remove(obj, key_family)
+            %% REMOVE removes all entries that match a key family
+            % also spits out an example entry so that data therein can be
+            % re-used and not re-entered if this function is being used in
+            % the context of dbHandler/add.m
+            keys = obj.get_keys('&'); % Only remove keys for actual units
+            
+            if iscell(keys)
+                for i = 1:length(keys)
                     whole_key = keys{i};
                     key_cell = strsplit(whole_key, '&');
                     key_str = key_cell{1};
                     if strcmp(key_str, key_family)
+                        example_entry = obj.db(whole_key);
                         remove(obj.db, whole_key);
                     end
                 end
+            end
+            if ~exist('example_entry','var')
+                example_entry = {};
             end
         end
 
         
         function fname = get_family_name(~, k)
+            % for keys
             fname = strsplit(k, '&');
             fname = fname{1};
+            % for folders
+            fname = strsplit(fname, '\');
+            fname = fname{end};
         end
         function save_db(obj)
             tic;
@@ -194,20 +203,20 @@ classdef dbHandler
             gwfparams.cluster_quality=tdfread([gwfparams.dataDir '\cluster_info.tsv']); % has a bunch of info here. 
             try
                 best_channels = (gwfparams.cluster_quality.channel);  
-            catch e
+            catch
                 % [7 Feb 2020] phy 2.0 beta 1 
                 % Different versions of phy2's template gui do the
                 % cluster_into.tsv differently- the headers are abbreviated
                 % for some cases.
                 best_channels = (gwfparams.cluster_quality.ch); 
             end
-            %TODO: add MUA functionality
-            good_clusters =gwfparams.cluster_quality.id(...
-                find(gwfparams.cluster_quality.group(:,1)=='g')); % | gwfparams.cluster_quality.group(:,1)=='m'));
-            gwfparams.good_clusters = good_clusters;
-            wf = obj.getWaveForms_BK(gwfparams);
             
-            %%
+            % select good clusters
+            good_clusters =gwfparams.cluster_quality.id(...
+                find(gwfparams.cluster_quality.group(:,1)=='g'));
+            gwfparams.good_clusters = good_clusters;
+            % access waveforms
+            wf = obj.getWaveForms_BK(gwfparams);
 %             wf = getWaveForms(gwfparams);
             %%
             %%
@@ -296,7 +305,7 @@ classdef dbHandler
                 
                 for j = 1:height(tsvDataGood)
                     nStrc = struct;
-                    nStrc.channel = tsvDataGood(j, :).Best_channelPhy2 - 7; % CUSTOM OFFSET, hardcoded
+                    nStrc.channel = tsvDataGood(j, :).Best_channelPhy2-7; % CUSTOM OFFSET, hardcoded
                     nStrc.unit = tsvDataGood(j, :).Cluster_idPhy2;
                     wfInd = find(wf.unitIDs == nStrc.unit);
                     nStrc.waveform = squeeze(wf.waveForms(wfInd, :, nStrc.channel,:))';

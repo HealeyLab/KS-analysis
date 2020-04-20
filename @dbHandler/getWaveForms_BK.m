@@ -70,6 +70,7 @@ end
 % Package in wf struct
 wf.unitIDs = good_cluster_idx;
 wf.spikeTimeKeeps = spikeTimeKeeps;
+% To decrease save time and save on space
 wf.waveForms = waveForms;
 wf.waveFormsMean = waveFormsMean;
 
