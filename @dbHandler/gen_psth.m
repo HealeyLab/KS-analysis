@@ -8,6 +8,9 @@ s = obj.db(key);
 si = s.stim_identities{1};
 uniq = unique(si); % remove redundancies
 usi = uniq(contains(uniq, 'BOS.wav')); % remove non-wav files
+if isempty(usi)
+    usi = uniq(contains(uniq, 'BOS_mda.wav')); % single case workaround
+end
 % only for stim type
 
 for i = 1:length(usi)

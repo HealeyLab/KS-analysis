@@ -308,6 +308,9 @@ classdef dbHandler
                     nStrc.channel = tsvDataGood(j, :).Best_channelPhy2-7; % CUSTOM OFFSET, hardcoded
                     nStrc.unit = tsvDataGood(j, :).Cluster_idPhy2;
                     wfInd = find(wf.unitIDs == nStrc.unit);
+                    % Index in position 3 exceeds array bounds (must not
+                    % exceed 16). If that is the case, change the CUSTOM
+                    % OFFSET on line 308
                     nStrc.waveform = squeeze(wf.waveForms(wfInd, :, nStrc.channel,:))';
                     nStrc.goodness = tsvDataGood(j, :).goodnessPhy2;
                     spike_waveform_info = [spike_waveform_info nStrc];
@@ -332,7 +335,18 @@ classdef dbHandler
             cleaned_vec = vec;
         end
         
-        function [id, num] = get_subject_id(~, key)
+        
+        function show_each_entry_size(obj)
+            for i = 1:length(obj.db)
+                keys = dbh.db.keys;
+                s = dbh.db(keys{i});
+                disp(keys{i})
+                whos('s')
+            end
+        end
+    end
+    methods(Static)
+        function [id, num] = get_subject_id(key)
             if contains(key, 'mda')
                 id = 'mda';
                 num = 1;
@@ -367,15 +381,6 @@ classdef dbHandler
             else
                 id = '';
                 num = 0;
-            end
-        end
-        
-        function show_each_entry_size(obj)
-            for i = 1:length(obj.db)
-                keys = dbh.db.keys;
-                s = dbh.db(keys{i});
-                disp(keys{i})
-                whos('s')
             end
         end
     end

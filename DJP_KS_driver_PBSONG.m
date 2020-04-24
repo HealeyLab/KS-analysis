@@ -26,12 +26,14 @@ dataPath = fullfile(origDataPath,['DJP_' ts_label '_Kilosort']);
 mkdir(dataPath)
 addpath(dataPath)
 %% Build .dat, adc_data, and figure out when the context switches
-dataFileName = fullfile(dataPath, 'raw_filtered.dat'); % [dataPath '\Kilosort_alldata\raw.dat'] % make .dat file
-% saving adc data, too
+% Initialize adc data
 board_adc = [];
+
 % open raw.dat to write
+dataFileName = fullfile(dataPath, 'raw_filtered.dat'); % [dataPath '\Kilosort_alldata\raw.dat'] % make .dat file
 fid1a = fopen(dataFileName, 'w'); % open .dat file for writing
 
+% sort according to filename. Not timestamp but filename
 filearray = [];
 for i = 1:length(files)
     filearray = [filearray dir(char(files(i)))];
@@ -46,23 +48,27 @@ f = waitbar(0, 'loading');
 % which the combined recording I'm doing is 
 contextSwitch = 0;
 for i=1:length(files)
-    
+    % read
     read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0);
     
     % bandpass filter
     datr = filter_datr(amplifier_data, frequency_parameters);
 
-    fwrite(fid1a, datr(:),'int16'); % append to .dat files
-    %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
+    % append to .dat files
+    fwrite(fid1a, datr(:),'int16'); %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
+    
+    % append to .mat file for adc_data
     if size(board_adc_data, 1) == 2
         board_adc_data = [NaN(1, size(board_adc_data, 2)); board_adc_data];
     end
     board_adc = [board_adc board_adc_data];
     
+    % update contextSwitch value
     
+    contextSwitch = contextSwitch + size(amplifier_data, 2);
     
+    % update waitbar!
     waitbar(i/length(files), f, 'loading Intan data')
-  
 end
 
 fclose(fid1a);
@@ -240,7 +246,6 @@ fclose(fid5);
 %%
 fclose('all');
 %% Go
-
 run(ChannelMapFile_pasted)
 run(master_file_example_pasted) % master_file_example_MOVEME
 %% 

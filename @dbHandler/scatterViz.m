@@ -5,11 +5,11 @@ colors = {obj.BB obj.BN obj.NB obj.NN};
 clust = {'hclust','km'};
 for i = 1:2
 figure('Name',clust{i})
-    for ii = 1:length(unique(T.km)) % numof clusts
+    for ii = 1:length(unique(T.(clust{i}))) % numof clusts
         color = colors{ii};
         
-%         scatter(T.p2p(T.(clust{i})==ii), T.sym(T.(clust{i})==ii), 'MarkerEdgeColor', color,...
-%             'MarkerFaceColor',color) %, 'jitter', 'on','jitterAmount', 0.01)
+        scatter(T.p2p(T.(clust{i})==ii), T.sym(T.(clust{i})==ii), 'MarkerEdgeColor', color,...
+            'MarkerFaceColor',color) %, 'jitter', 'on','jitterAmount', 0.01)
         hold on;
     end
 end
@@ -38,7 +38,7 @@ title('Peak to peak vs evoked firing rate')
 subplot(3,2,4)
 scatcell = cell(1,1);
 for i = 1:8
-    scatcell{i} = T.depth(T.id==ii);
+    scatcell{i} = T.depth(T.id==i);
 end
 catLabels = {'mda','mdb','mdc','mdd','mde','mdx','mdy','mdz'};
 plotSpread(scatcell, 'CategoryLabels', catLabels)
