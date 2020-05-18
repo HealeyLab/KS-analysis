@@ -42,10 +42,11 @@ end
 files = files(idx);
 
 % make a waitbar!
-waitbarFig = waitbar(0, 'loading');
 
-% store which file is being processed when 
-contingenciesFid = fopen(fullfile(dataPath, 'contingencies.txt'),'w');
+f = waitbar(0, 'loading');
+% I need to keep track of how long the recording is so that when the fem
+% return is added, I can save the length. contextSwitch means the time at
+% which the combined recording I'm doing is 
 
 for i=1:length(files)
     % read
@@ -63,6 +64,7 @@ for i=1:length(files)
     end
     board_adc = [board_adc board_adc_data];
     
+
     % write your file
     fprintf(contingenciesFid, [filearray(i).name '\t' num2str(size(amplifier_data, 2)) '\n']);
     

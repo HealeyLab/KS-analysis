@@ -1,12 +1,17 @@
-function [] = basicViewer(obj, argin)
-%BASICVIEWER Summary of this function goes here
-%   Detailed explanation goes here
+function [] = basicViewer(obj, argin, varargin)
+%BASICVIEWER Because MATLAB isn't good at OOP, this function extracts
+%syllables for both song trials (when you recorded a brain and singing at
+%the same time) and for playbacks (for annotating a .wav file to extract
+%timestamps
+%   To run it for playback, use a .wav absolute path as input and include a
+%   second argument with the subject name, to run it for a song trial, just
+%   input the entry.
 label = 'playback';
-if contains(argin, '.wav')
+if ~isempty(varargin)
     [y, Fs] = audioread(argin);
     sonogram = y;
     adc_sr = Fs;
-    file = argin;
+    argin = varargin{1}; % this will become the key
 elseif contains(argin, 'Kilosort')
     % for state of function
     label = 'song';

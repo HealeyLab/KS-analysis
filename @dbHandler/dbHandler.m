@@ -177,10 +177,18 @@ classdef dbHandler
             disp(['saving time: ' num2str(toc/3600) ' hours'])
         end
         
-        function [spike_waveform_info, spike_timestamps, sp] = getWaveFormsDriver(obj)
+        function [spike_waveform_info, spike_timestamps, sp] = getWaveFormsDriver(obj,varargin)
+            %% GETWAVEFORMSDRIVER
+            % Inputs
+            %   varargin{1}: folder to work in
             close all;
             
-            dataDir = pwd;
+            if isempty(varargin)
+                dataDir = pwd;
+            else
+                dataDir = varargin{1};
+            end
+            
             sp = loadKSdir(dataDir);
             
             gwfparams.sr = sp.sample_rate;
@@ -305,7 +313,7 @@ classdef dbHandler
                 
                 for j = 1:height(tsvDataGood)
                     nStrc = struct;
-                    nStrc.channel = tsvDataGood(j, :).Best_channelPhy2-7; % CUSTOM OFFSET, hardcoded
+                    nStrc.channel = tsvDataGood(j, :).Best_channelPhy2 - 7; % CUSTOM OFFSET, hardcoded
                     nStrc.unit = tsvDataGood(j, :).Cluster_idPhy2;
                     wfInd = find(wf.unitIDs == nStrc.unit);
                     % Index in position 3 exceeds array bounds (must not
