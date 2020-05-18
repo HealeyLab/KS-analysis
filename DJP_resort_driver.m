@@ -60,7 +60,7 @@ for i = 1:numel(A)
 end
 fclose(fid);
 %% Edit masterfile
-%% Third, edit the master file
+%% Third, edicd t the master file
 fid5 = fopen('master_file_example_MOVEME.m','r');
 i = 1;
 tline = fgetl(fid5);

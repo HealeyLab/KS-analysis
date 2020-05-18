@@ -22,7 +22,7 @@ is_32 = input('is this a 32 channel recording? (''1'' for yes, ''0'' for no )\n'
 is_stereo = input('does the microdrive use stereotrodes? (''1'' for yes, ''0'' for no ) \n');
 
 % Naming the directory/folder that will be named here
-dataPath = fullfile(origDataPath,['DJP_' ts_label '_Kilosort']);
+dataPath = fullfile(origDataPath,['DJPComb_' ts_label '_Kilosort']);
 mkdir(dataPath)
 addpath(dataPath)
 %% Build .dat, adc_data, and figure out when the context switches
@@ -31,7 +31,7 @@ board_adc = [];
 
 % open raw.dat to write
 dataFileName = fullfile(dataPath, 'raw_filtered.dat'); % [dataPath '\Kilosort_alldata\raw.dat'] % make .dat file
-fid1a = fopen(dataFileName, 'w'); % open .dat file for writing
+rawDataFID = fopen(dataFileName, 'w'); % open .dat file for writing
 
 % sort according to filename. Not timestamp but filename
 filearray = [];
@@ -42,11 +42,11 @@ end
 files = files(idx);
 
 % make a waitbar!
-f = waitbar(0, 'loading');
-% I need to keep track of how long the recording is so that when the fem
-% return is added, I can save the length. contextSwitch means the time at
-% which the combined recording I'm doing is 
-contextSwitch = 0;
+waitbarFig = waitbar(0, 'loading');
+
+% store which file is being processed when 
+contingenciesFid = fopen(fullfile(dataPath, 'contingencies.txt'),'w');
+
 for i=1:length(files)
     % read
     read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0);
@@ -55,7 +55,7 @@ for i=1:length(files)
     datr = filter_datr(amplifier_data, frequency_parameters);
 
     % append to .dat files
-    fwrite(fid1a, datr(:),'int16'); %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
+    fwrite(rawDataFID, datr(:),'int16'); %     fwrite(fid1a, amplifier_data(:),'int16'); % append to .dat file
     
     % append to .mat file for adc_data
     if size(board_adc_data, 1) == 2
@@ -63,21 +63,22 @@ for i=1:length(files)
     end
     board_adc = [board_adc board_adc_data];
     
-    % update contextSwitch value
-    
-    contextSwitch = contextSwitch + size(amplifier_data, 2);
+    % write your file
+    fprintf(contingenciesFid, [filearray(i).name '\t' num2str(size(amplifier_data, 2)) '\n']);
     
     % update waitbar!
-    waitbar(i/length(files), f, 'loading Intan data')
+    waitbar(i/length(files), waitbarFig, 'loading Intan data')
 end
 
-fclose(fid1a);
-close(f); % close waitbar
+fclose(rawDataFID);
+fclose(contingenciesFid);
+close(waitbarFig); % close waitbar
+
 
 adc_sr=frequency_parameters.board_adc_sample_rate;
 save(fullfile(dataPath, 'adc_data'), 'board_adc', 'adc_sr', '-v7.3')
 %% write params.py
-fid2 = fopen(fullfile(dataPath, 'params.py'),'w');
+paramspyFid = fopen(fullfile(dataPath, 'params.py'),'w');
 
 dat_path = 'raw_filtered.dat';
 n_channels_dat = string(length(amplifier_channels));
@@ -86,14 +87,14 @@ offset = 0;
 sample_rate = string(frequency_parameters.amplifier_sample_rate);
 hp_filtered = 'True';
 
-fprintf(fid2, 'dat_path = r''%s''\n', dat_path);
-fprintf(fid2, 'n_channels_dat = %s\n', n_channels_dat); %2d means two digit
-fprintf(fid2, 'dtype = ''%s''\n', dtype);
-fprintf(fid2, 'offset = 0\n');
-fprintf(fid2, 'sample_rate = %s.\n', sample_rate);
-fprintf(fid2, 'hp_filtered = %s\n', hp_filtered);
+fprintf(paramspyFid, 'dat_path = r''%s''\n', dat_path);
+fprintf(paramspyFid, 'n_channels_dat = %s\n', n_channels_dat); %2d means two digit
+fprintf(paramspyFid, 'dtype = ''%s''\n', dtype);
+fprintf(paramspyFid, 'offset = 0\n');
+fprintf(paramspyFid, 'sample_rate = %s.\n', sample_rate);
+fprintf(paramspyFid, 'hp_filtered = %s\n', hp_filtered);
 
-fclose(fid2);
+fclose(paramspyFid);
 clear fid2 dat_path dtype offset hp_filtered 
 clear amplifier_channels amplifier_data aux_input_channels aux_input_data ...
         board_dig_in_data board_dig_in_channels filename frequency_parameters ...
@@ -132,16 +133,16 @@ StandardConfig_pasted      = fullfile(dataPath, 'StandardConfig_MOVEME.m');
 
 %% Edit Standard Config File
 % https://www.mathworks.com/matlabcentral/answers/62986-how-to-change-a-specific-line-in-a-text-file
-fid3 = fopen(StandardConfig_pasted,'r');
+standardConfigFid = fopen(StandardConfig_pasted,'r');
 i = 1;
-tline = fgetl(fid3);
+tline = fgetl(standardConfigFid);
 A{i} = tline;
 while ischar(tline)
     i = i+1;
-    tline = fgetl(fid3);
+    tline = fgetl(standardConfigFid);
     A{i} = tline;
 end
-fclose(fid3);
+fclose(standardConfigFid);
 % Change lines of .m file
 A{1}  = sprintf('ops.GPU=1;');
 A{2}  = sprintf('ops.parfor=1;');
@@ -170,16 +171,16 @@ A{16} = sprintf('ops.nNeigh = %s; % visualization only (Phy): number of neighbor
 A{24} = sprintf('ops.chanMap = ''%s'';',  fullfile(dataPath, 'chanMap.mat'));
 
 % Write cell A into txt
-fid3 = fopen(StandardConfig_pasted, 'w');
+standardConfigFid = fopen(StandardConfig_pasted, 'w');
 for i = 1:numel(A)
     if A{i+1} == -1
-        fprintf(fid3,'%s', A{i});
+        fprintf(standardConfigFid,'%s', A{i});
         break
     else
-        fprintf(fid3,'%s\n', A{i});
+        fprintf(standardConfigFid,'%s\n', A{i});
     end
 end
-fclose(fid3);
+fclose(standardConfigFid);
 %% Edit ChannelMap
 fid4 = fopen(ChannelMapFile_pasted,'r');
 i = 1;
