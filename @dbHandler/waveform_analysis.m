@@ -1,17 +1,40 @@
-function waveform_analysis(obj)
+function waveform_analysis(obj, context)
 %% WAVEFORM_ANALYSIS This is for going through your entire dataset and 
 %% marking each waveform as good or bad. It is your final pass.
 % This opens a GUI to let you increment through each waveform. It displays
 % some statistics about the waveform, including p2p length and symmtry.
     keys = obj.db.keys;
+    
     wf_keys = {};
-    for i = 1:length(keys)
-        s = obj.db(keys{i});
-        if isfield(s, 'for_wf_analysis') && s.for_wf_analysis
-            s.wf_analysis_include = 0;
-            wf_keys{length(wf_keys) + 1} = keys{i};
+    if strcmp(context,'')
+        for i = 1:length(keys)
+            s = obj.db(keys{i});
+            if isfield(s, 'for_wf_analysis') && s.for_wf_analysis
+                s.wf_analysis_include = 0;
+                wf_keys{length(wf_keys) + 1} = keys{i};
+            end
         end
+        
+        %Set the field to edit!
+        Field = 'wf_analysis_include';
+        
+    else
+        for i = 1:length(keys)
+            s = obj.db(keys{i});
+            if isfield(s, 'context') && strcmp(s.context, context)
+                disp(keys{i})
+                s.Fig = 0; % new field 
+                wf_keys{length(wf_keys) + 1} = keys{i};
+            end
+        end
+        
+        % set the field to edit!
+        Field = 'Fig';
+
     end
+    
+    
+    
     count = 0;
     
     fig = figure('Visible','on','Position',[360,200,550,300]);
@@ -49,7 +72,11 @@ function waveform_analysis(obj)
     function include_Callback(source,~) 
     % for if is good
         [s,key] = get_s();
-        s.wf_analysis_include = 1;
+        
+
+        s.(Field) = 1;
+        
+        
         obj.db(key) = s;
         handle = ancestor(source, 'figure');
         status_handle = findobj(handle, 'Tag', 'status');
@@ -59,7 +86,7 @@ function waveform_analysis(obj)
     function exclude_Callback(source,~) 
     % for if is bad
         [s, key] = get_s();
-        s.wf_analysis_include = 0;
+        s.(Field) = 0;
         obj.db(key) = s;
         handle = ancestor(source, 'figure');
         status_handle = findobj(handle, 'Tag', 'status');
@@ -67,13 +94,13 @@ function waveform_analysis(obj)
     end
 
     function show_wf_analysis_include(s, status_handle)
-        if isfield(s, 'wf_analysis_include') && s.wf_analysis_include
+        if isfield(s, Field) && s.(Field)
             include = 'INCLUDED';
         else
             include = 'NOT INCLUDED';
         end
         
-        if isfield(s, 'wf_analysis_include')
+        if isfield(s, Field)
             set(status_handle, 'String', include);
         else
             set(status_handle, 'String', 'undecided');
@@ -130,7 +157,7 @@ function waveform_analysis(obj)
         [Vmax,Imax] = max(wf_mean(Imin:end));
         s.p2p = obj.get_p2p(s);
         s.sym = obj.get_sym(s); % abs(Vmax/Vmin);
-        plot(Imax+Imin, Vmax, 'm*');
+        plot(Imax+Imin-1, Vmax, 'm*');
         plot(Imin, Vmin, 'm*');
         ylim([Vmin*3 Vmax*7])
         hold off;

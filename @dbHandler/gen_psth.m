@@ -1,16 +1,26 @@
-function [hs, raster_arr] = gen_psth(obj, key, show)
+function [hs, raster_arr, BL_dur] = gen_psth(obj, argin, show, varargin)
 %% Automatically generates psth for each stimulus type
-s = obj.db(key);
+if ischar(argin)
+    key = argin;
+    s = obj.db(key);
+elseif isstruct(argin)
+    s = argin;
+else
+    error('multiple dispatch failure');
+end
 
-[on, off, wav_files] = obj.get_stim_on_off(key);
+% get stim on off
+[on, off, wav_files] = obj.get_stim_on_off(s);
 
 % for each class of stim:
 si = s.stim_identities{1};
 uniq = unique(si); % remove redundancies
-usi = uniq(contains(uniq, 'BOS.wav')); % remove non-wav files
-if isempty(usi)
-    usi = uniq(contains(uniq, 'BOS_mda.wav')); % single case workaround
+if isempty(varargin)
+    usi = uniq(contains(uniq, 'BOS.wav')); % remove non-wav, non-BOS files
+else
+    usi = uniq(contains(uniq, varargin{1}));
 end
+assert(~isempty(usi))
 % only for stim type
 
 for i = 1:length(usi)
@@ -29,10 +39,11 @@ for i = 1:length(usi)
 
         % range in samples, convert back to seconds once returned.
         raster_arr{j} = obj.sliceTS(sp_ts, [start stop]) / s.amplifier_sampling_rate;
-
     end
+    
+    %%
     if show
-        %% formatting output
+        % formatting output
         for k = 1:length(wav_files)
             if contains(usi{i}, wav_files(k).name)
                 curr_wav = wav_files(k);
@@ -42,11 +53,10 @@ for i = 1:length(usi)
         hs = obj.generatePSTH(raster_arr, s.amplifier_sampling_rate,...
             [zeros(2*s.adc_sampling_rate, 1); curr_wav.data; zeros(2*s.adc_sampling_rate, 1)],...
             s.adc_sampling_rate);
-
     else
         hs=0;
     end
-    
+
 end
 
 end

@@ -46,7 +46,6 @@ f = waitbar(0, 'loading');
 % I need to keep track of how long the recording is so that when the fem
 % return is added, I can save the length. contextSwitch means the time at
 % which the combined recording I'm doing is 
-contextSwitch = 0;
 for i=1:length(files)
     % read
     read_Intan_RHD2000_file_MML_DJP(fullfile(filearray(i).folder,filearray(i).name),0);
@@ -65,7 +64,6 @@ for i=1:length(files)
     
     % update contextSwitch value
     
-    contextSwitch = contextSwitch + size(amplifier_data, 2);
     
     % update waitbar!
     waitbar(i/length(files), f, 'loading Intan data')

@@ -1,28 +1,41 @@
-function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, curr_dir)
+function [timestamps, filecell, adc_sr] = extract_stim_timestamps(obj, S, varargin)
 
 %     Logic:
 %     1. Load wav files, text files and audio adc files
 %     2. Downsample them to match the recording SR
 %     3. Cross correlate signals
-%     4. Detect peaks within TTL pulses 
-workingDirectory = curr_dir;
-cd(workingDirectory)
+%     4. Detect peaks within TTL pulses
+%{
+%% for re-constructing a text file
+for i=1:160
+obj.showSpectrogram(norm_adc_audio(over(i):under(i)), S.adc_sr)
+input(num2str(i))
+cla
+end
+%}
+%{
+for i = 1:length(over)
+text(over(i), .3, num2str(i))
+end
+for i = 1:length(under)
+text(under(i), -.3, num2str(i))
+end
+%}
+
 %% 1 set up adc data
 disp('adc data')
 % adc data
-stim_data_path = fullfile(workingDirectory, 'adc_data.mat');
-S = load(stim_data_path); % S.board_adc, S.adc_sr
 S.board_adc(1,:) = obj.filter_song(S.board_adc(1,:), S.adc_sr);
 adc_sr = S.adc_sr;
 
-audioPath = obj.get_audioPath(workingDirectory);
+audioPath = obj.get_audioPath(pwd);
 
 disp('diff')
 overunder = [diff(S.board_adc(2,:)) 0]; % add 0 at the end bc this cuts one off
 
 disp('cleaning peaks')
-over = find(overunder > 0.75);
-under = find(overunder < -0.75);
+over = find(overunder > 0.95);
+under = find(overunder < -0.95);
 over = obj.clean_peaks(over);
 under = obj.clean_peaks(under);        
 
@@ -36,7 +49,11 @@ norm_adc_audio =  filter(b1, a1, norm_adc_audio);
 norm_adc_audio =  filter(b1, a1, norm_adc_audio);
 
 % text files for stim id's
-text_path = dir('*markers.txt');
+if isempty(varargin)
+    text_path = dir('*markers.txt');
+else
+    text_path = dir(varargin{1});
+end
 fid = fopen(fullfile(text_path(1).folder, text_path(1).name),'r');
 filecell = textscan(fid, '%s', 'Delimiter', '\n');
 fclose(fid);
@@ -78,6 +95,7 @@ for i=1:length(over)
     % if it's STRF time
     y=[];
     if isempty(s)
+        disp(curr_wav_name);
         params = split(curr_wav_name, ' ');
         freq = str2double(params{1});
         amp = str2double(params{2});
@@ -94,11 +112,10 @@ for i=1:length(over)
     [~,I] = max((co));
     lagDiff = lag(I); % is the difference in start of signal between orignial .wav and in TTL envelope
     
-    if ~isempty(s)
-        timestamps(i) =    under(i) - length(s.wav) / s.fs * adc_sr; % over(i) + (lagDiff); %
-    else
-        timestamps(i) = under(i) - length(s.wav) / s.fs * adc_sr; % over(i) + (lagDiff); % 
-    end
+    %if ~isempty(s)
+    %else
+    timestamps(i) = over(i) + (lagDiff); %     under(i) - length(s.wav) / s.fs * adc_sr; % 
+    %end
 %         Viz
 %         figure; hold on; plot(norm_adc_audio(over(i)+lagDiff:under(i)+lagDiff));plot(s.wav/4+.5)
 %         figure; hold on; plot(norm_adc_audio(over(i)+lagDiff:under(i)+lagDiff));plot(y/120 +.5)

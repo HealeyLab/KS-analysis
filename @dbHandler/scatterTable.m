@@ -1,7 +1,7 @@
 function [T, eva] = scatterTable(obj)
 
     T = table('Size', [1 7], 'VariableTypes',...
-            {'string','double','double', 'double', 'double', 'double', 'double'},'VariableNames',...
+            {'string','double','double', 'double', 'double', 'datetime', 'double'},'VariableNames',...
             {'key'   ,'p2p',   'sym',    'FR',     'depth',  'TOD',    'id'});
 %               1      2         3          4         5         6        7 
 
@@ -33,7 +33,8 @@ function [T, eva] = scatterTable(obj)
             [~, id_num] = obj.get_subject_id(key);
             
             
-            T = [T; {key obj.get_p2p(s) obj.get_sym(s) total_spikes/total_time s.depth   obj.get_time_of_day(key) id_num}];
+            T = [T; ...
+                {key obj.get_p2p(s) obj.get_sym(s) total_spikes/total_time s.depth   obj.get_time_of_day(key) id_num}];
 
             disp([num2str(height(T)) ' ' key])    
         end
